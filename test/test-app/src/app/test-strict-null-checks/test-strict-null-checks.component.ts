@@ -26,8 +26,65 @@ export class TestStrictNullChecksComponent implements OnInit {
 
   ngOnInit(): void {}
 
-  // Basic test: --strictNullChecks
-  printNum(v?: number) {
+  // Test: Assign variable to null
+  assignNull() {
+    let n = 0;
+    n = null;
+    n = 5;
+  }
+
+  // Test: Assign variable to undefined
+  assignUndefined() {
+    let n = 0;
+    n = undefined;
+    n = 5;
+  }
+
+  // Test: Assign variable to null and undefined
+  assignNullAndUndefined() {
+    let n = 0;
+    n = null;
+    n = 5;
+    n = undefined;
+    n = 7;
+  }
+
+  // Test: Assign variable to null in conditional branch
+  assignInBranch(goInBranch: boolean) {
+    let n = 0;
+    if (goInBranch) {
+      n = null;
+    }
+    n = 5;
+  }
+
+  // Test: Pass null value to function
+  doesNotExpectNull(n: number) {}
+
+  passesNullValue() {
+    this.doesNotExpectNull(null);
+  }
+
+  // Test: Assign argument to null
+  turnsIntoNull(n: number) {
+    n = null;
+  }
+
+  // Test: Add element to empty list
+  addToEmptyList() {
+    const emptyList = [];
+    emptyList.push(5);
+  }
+
+  // Test: Return null value but not in return type
+  unexpectedlyReturnsNull(): number {
+    return null;
+  }
+
+  // Test: Object is possibly null
+  objectPossiblyNull() {
+    const v: number | null = 5;
+
     console.log(v.toString());
     // => Error, v may be undefined
 
