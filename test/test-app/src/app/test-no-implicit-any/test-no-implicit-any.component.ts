@@ -1,4 +1,4 @@
-<!--
+/*
     Copyright 2020 Google LLC
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +12,22 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
--->
+*/
 
-<h1>{{ title }}</h1>
+import { Component, OnInit } from '@angular/core';
 
-<app-test-no-implicit-returns></app-test-no-implicit-returns>
-<app-test-strict-null-checks></app-test-strict-null-checks>
-<app-test-strict-property-initialization></app-test-strict-property-initialization>
-<app-test-no-implicit-any></app-test-no-implicit-any>
+@Component({
+  selector: 'app-test-no-implicit-any',
+  templateUrl: './test-no-implicit-any.component.html',
+  styleUrls: ['./test-no-implicit-any.component.css'],
+})
+export class TestNoImplicitAnyComponent implements OnInit {
+  constructor() {}
+
+  ngOnInit(): void {}
+
+  // Basic test: --noImplicitAny
+  sayHello(name: any) {
+    return name;
+  }
+}

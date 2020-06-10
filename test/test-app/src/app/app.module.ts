@@ -19,10 +19,18 @@ import { NgModule } from '@angular/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { TestNoImplicitReturnsComponent } from './test-no-implicit-returns/test-no-implicit-returns.component';
+import { TestStrictNullChecksComponent } from './test-strict-null-checks/test-strict-null-checks.component';
+import { TestStrictPropertyInitializationComponent } from './test-strict-property-initialization/test-strict-property-initialization.component';
+import { TestNoImplicitAnyComponent } from './test-no-implicit-any/test-no-implicit-any.component';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    TestNoImplicitReturnsComponent,
+    TestStrictNullChecksComponent,
+    TestStrictPropertyInitializationComponent,
+    TestNoImplicitAnyComponent
   ],
   imports: [
     BrowserModule,
