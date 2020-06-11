@@ -22,7 +22,21 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./test-strict-property-initialization.component.css'],
 })
 export class TestStrictPropertyInitializationComponent implements OnInit {
-  constructor() {}
+  private unAssignedScalar: boolean; // Test: Unassigned scalar property
+  private unAssignedButUndefined: boolean | undefined;
+  private assignedInDeclaration = true;
+  private assignedInConstructor: boolean;
+
+  private unAssignedNonScalar: []; // Test: Unassigned nonscalar property: list
+  private unAssignedInterface: TestInterface; // Test: Unassigned nonscalar property: interface
+
+  constructor() {
+    this.assignedInConstructor = true;
+  }
 
   ngOnInit(): void {}
+}
+
+interface TestInterface {
+  param: boolean;
 }
