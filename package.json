@@ -9,7 +9,14 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node experimental/index.ts"
+    "dev": "ts-node experimental/index.ts",
+    "check": "gts check",
+    "clean": "gts clean",
+    "compile": "tsc",
+    "fix": "gts fix",
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run check"
   },
   "repository": {
     "type": "git",
@@ -26,10 +33,12 @@
     "url": "https://github.com/googleinterns/typescript-flag-upgrade/issues"
   },
   "homepage": "https://github.com/googleinterns/typescript-flag-upgrade#readme",
-  "dependencies": {},
+  "dependencies": {
+    "ts-morph": "^7.1.1"
+  },
   "devDependencies": {
     "@types/node": "^14.0.13",
-    "ts-morph": "^7.1.1",
+    "gts": "^2.0.2",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
   }

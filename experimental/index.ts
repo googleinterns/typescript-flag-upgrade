@@ -1,11 +1,11 @@
-import { Project } from "ts-morph";
+import {Project} from 'ts-morph';
 
 const project = new Project({
-  tsConfigFilePath: "./test/test-app/tsconfig.json",
+  tsConfigFilePath: './test/test-app/tsconfig.json',
 });
 
 // ...lots of code here that manipulates, copies, moves, and deletes files...
-console.log("test");
+console.log('test');
 
 const sourceFiles = project.getSourceFiles();
 
