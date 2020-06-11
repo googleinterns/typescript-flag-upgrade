@@ -70,6 +70,16 @@ export class TestStrictNullChecksComponent implements OnInit {
     n = null;
   }
 
+  // Test: Assign non-null to null variable
+  assignNonNullValueToNullVar() {
+    let n = null;
+    n = this.returnsNumber();
+  }
+
+  returnsNumber() {
+    return 5;
+  }
+
   // Test: Add element to empty list
   addToEmptyList() {
     const emptyList = [];
