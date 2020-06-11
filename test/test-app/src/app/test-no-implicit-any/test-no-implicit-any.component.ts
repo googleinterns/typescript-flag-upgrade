@@ -15,6 +15,7 @@
 */
 
 import { Component, OnInit } from '@angular/core';
+import { SeparateClass } from './separate-file';
 
 @Component({
   selector: 'app-test-no-implicit-any',
