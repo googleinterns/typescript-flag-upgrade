@@ -27,11 +27,13 @@ export class TestNoImplicitAnyComponent implements OnInit {
   ngOnInit(): void {}
 
   // Test: No information regarding variable type
+  // Fix: noInfo(name: any) {
   noInfo(name) {
     return name;
   }
 
   // Test: Infer type from method signatures called by func
+  // Fix: callsTakeString(val: string) {
   callsTakeString(val) {
     this.takeString(val);
   }
@@ -41,8 +43,10 @@ export class TestNoImplicitAnyComponent implements OnInit {
   // Test: Infer type from method signatures calling func
   passString(val: string) {
     this.calledByPassString(val);
+    this.calledByPassNumAndPassString(val);
   }
 
+  // Fix: calledByPassString(val: string) {}
   calledByPassString(val) {}
 
   // Test: Concatenates multiple possible types
@@ -50,16 +54,17 @@ export class TestNoImplicitAnyComponent implements OnInit {
     this.calledByPassNumAndPassString(val);
   }
 
-  takeNum(val: number) {}
-
+  // Fix: calledByPassString(val: string | number) {}
   calledByPassNumAndPassString(val) {}
 
   // Test: Supports chaining
+  // Fix: callsCallsTakeString(val: string) {
   callsCallsTakeString(val) {
     this.callsTakeString(val);
   }
 
   // Test: Spans across multiple files
+  // Fix: callsTakeStringInSeparateClass(val: string) {
   callsTakeStringInSeparateClass(val) {
     new BasicClass().takeStringSeparateClass(val);
   }
@@ -69,28 +74,33 @@ export class TestNoImplicitAnyComponent implements OnInit {
   // Test: Assign any array to defined type array
   assignToDefinedArray() {
     let mustBeStringArray: string[];
+    // Fix: const anyArray: string[] = [];
     const anyArray = [];
     mustBeStringArray = anyArray;
   }
 
-  // Objects
+  // Objects: For all object tests, possibility to leave smart comments detailing what the object structure should be
 
   // Test: Accessing an empty object
   accessEmptyObjectProperty() {
+    // Fix: const emptyObject: any = {};
     const emptyObject = {};
     emptyObject['property'] = true;
   }
 
   // Test: Accessing a non-empty object
   accessNonEmptyObjectProperty() {
+    // Fix: const nonEmptyObject: any = { already: false };
     const nonEmptyObject = { already: false };
     nonEmptyObject['property'] = true;
   }
 
+  // Fix: printUnknownObject(unknownObject: any) {
   printUnknownObject(unknownObject) {
     console.log(unknownObject.foo + unknownObject.bar);
   }
 
+  // Fix: printUnknownObjectWithProps(unknownObject: any) {
   printUnknownObjectWithProps(unknownObject) {
     Math.abs(unknownObject.baz);
   }

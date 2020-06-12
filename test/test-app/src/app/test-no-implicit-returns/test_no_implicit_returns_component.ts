@@ -41,11 +41,13 @@ export class TestNoImplicitReturnsComponent implements OnInit {
     if (name === 'Bob') {
       return 'Hello Bob';
     }
+    // Fix: return undefined;
   }
 
   // Test: Returns halfway through function with no value
   noValueReturnInIf(name: string) {
     if (name === 'Bob') {
+      // Fix: return undefined;
       return;
     }
     return 'Hello Not-Bob';

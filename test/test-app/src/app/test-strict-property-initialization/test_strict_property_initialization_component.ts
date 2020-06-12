@@ -22,13 +22,20 @@ import { BasicInterface } from '../util/basic_interface';
   templateUrl: './test_strict_property_initialization_component.html',
 })
 export class TestStrictPropertyInitializationComponent implements OnInit {
-  private unAssignedScalar: boolean; // Test: Unassigned scalar property
+  // Test: Unassigned scalar property
+  // Fix: private unAssignedScalar: boolean | undefined;
+  private unAssignedScalar: boolean;
   private unAssignedButUndefined: boolean | undefined;
   private assignedInDeclaration = true;
   private assignedInConstructor: boolean;
 
-  private unAssignedNonScalar: []; // Test: Unassigned nonscalar property: list
-  private unAssignedInterface: BasicInterface; // Test: Unassigned nonscalar property: interface
+  // Test: Unassigned nonscalar property: list
+  // Fix:   private unAssignedNonScalar: [] | undefined;
+  private unAssignedNonScalar: [];
+
+  // Test: Unassigned nonscalar property: interface
+  // Fix: private unAssignedInterface: BasicInterface | undefined;
+  private unAssignedInterface: BasicInterface;
 
   constructor() {
     this.assignedInConstructor = true;

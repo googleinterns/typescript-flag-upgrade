@@ -20,6 +20,8 @@ import { AppComponent } from './app_component';
 import { BasicClass } from './util/basic_class';
 
 describe('AppComponent', () => {
+  // Test: noImplicitAny in Angular test files
+  // Fix: let testClass: BasicClass | undefined;
   let testClass;
 
   beforeEach(async(() => {
@@ -51,7 +53,6 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('h1').textContent).toContain('test_app');
   });
 
-  // Test: noImplicitAny in Angular test files
   it('gets value from class', () => {
     expect(testClass.value).toBe(true);
   });
