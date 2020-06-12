@@ -15,12 +15,11 @@
 */
 
 import { Component, OnInit } from '@angular/core';
-import { SeparateClass } from './separate-file';
+import { BasicClass } from '../util/basic_class';
 
 @Component({
   selector: 'app-test-no-implicit-any',
-  templateUrl: './test-no-implicit-any.component.html',
-  styleUrls: ['./test-no-implicit-any.component.css'],
+  templateUrl: './test_no_implicit_any_component.html',
 })
 export class TestNoImplicitAnyComponent implements OnInit {
   constructor() {}
@@ -62,7 +61,7 @@ export class TestNoImplicitAnyComponent implements OnInit {
 
   // Test: Spans across multiple files
   callsTakeStringInSeparateClass(val) {
-    new SeparateClass().takeStringSeparateClass(val);
+    new BasicClass().takeStringSeparateClass(val);
   }
 
   // Lists

@@ -15,11 +15,11 @@
 */
 
 import { Component, OnInit } from '@angular/core';
+import { BasicInterface } from '../util/basic_interface';
 
 @Component({
   selector: 'app-test-strict-property-initialization',
-  templateUrl: './test-strict-property-initialization.component.html',
-  styleUrls: ['./test-strict-property-initialization.component.css'],
+  templateUrl: './test_strict_property_initialization_component.html',
 })
 export class TestStrictPropertyInitializationComponent implements OnInit {
   private unAssignedScalar: boolean; // Test: Unassigned scalar property
@@ -28,15 +28,11 @@ export class TestStrictPropertyInitializationComponent implements OnInit {
   private assignedInConstructor: boolean;
 
   private unAssignedNonScalar: []; // Test: Unassigned nonscalar property: list
-  private unAssignedInterface: TestInterface; // Test: Unassigned nonscalar property: interface
+  private unAssignedInterface: BasicInterface; // Test: Unassigned nonscalar property: interface
 
   constructor() {
     this.assignedInConstructor = true;
   }
 
   ngOnInit(): void {}
-}
-
-interface TestInterface {
-  param: boolean;
 }

@@ -18,8 +18,7 @@ import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-test-strict-null-checks',
-  templateUrl: './test-strict-null-checks.component.html',
-  styleUrls: ['./test-strict-null-checks.component.css'],
+  templateUrl: './test_strict_null_checks_component.html',
 })
 export class TestStrictNullChecksComponent implements OnInit {
   constructor() {}

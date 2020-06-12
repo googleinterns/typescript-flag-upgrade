@@ -18,8 +18,7 @@ import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-test-no-implicit-returns',
-  templateUrl: './test-no-implicit-returns.component.html',
-  styleUrls: ['./test-no-implicit-returns.component.css'],
+  templateUrl: './test_no_implicit_returns_component.html',
 })
 export class TestNoImplicitReturnsComponent implements OnInit {
   noEndReturnAlice: string | undefined;

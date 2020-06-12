@@ -16,18 +16,20 @@
 
 import { TestBed, async } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { AppComponent } from './app.component';
+import { AppComponent } from './app_component';
+import { BasicClass } from './util/basic_class';
 
 describe('AppComponent', () => {
+  let testClass;
+
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [
-        RouterTestingModule
-      ],
-      declarations: [
-        AppComponent
-      ],
+      imports: [RouterTestingModule],
+      declarations: [AppComponent],
+      providers: [BasicClass],
     }).compileComponents();
+
+    testClass = TestBed.inject(BasicClass);
   }));
 
   it('should create the app', () => {
@@ -39,13 +41,18 @@ describe('AppComponent', () => {
   it(`should have as title 'test-app'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('test-app');
+    expect(app.title).toEqual('test_app');
   });
 
   it('should render title', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement;
-    expect(compiled.querySelector('.content span').textContent).toContain('test-app app is running!');
+    expect(compiled.querySelector('h1').textContent).toContain('test_app');
+  });
+
+  // Test: noImplicitAny in Angular test files
+  it('gets value from class', () => {
+    expect(testClass.value).toBe(true);
   });
 });
