@@ -6,6 +6,9 @@ import { TestStrictNullChecksComponent } from './test-strict-null-checks/test_st
 import { TestStrictPropertyInitializationComponent } from './test-strict-property-initialization/test_strict_property_initialization_component';
 import { TestNoImplicitAnyComponent } from './test-no-implicit-any/test_no_implicit_any_component';
 
+/**
+ * Base component
+ */
 @Component({
   selector: 'app-root',
   templateUrl: './app_component.html',
@@ -14,6 +17,9 @@ export class AppComponent {
   title = 'test_app';
 }
 
+/**
+ * Base module
+ */
 @NgModule({
   declarations: [
     AppComponent,

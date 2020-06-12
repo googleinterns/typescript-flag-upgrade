@@ -19,6 +19,9 @@ import { Routes, RouterModule } from '@angular/router';
 
 const routes: Routes = [];
 
+/**
+ * Module for handling routing, currently empty
+ */
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],

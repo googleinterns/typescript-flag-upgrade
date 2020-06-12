@@ -16,6 +16,9 @@
 
 import { Component, OnInit } from '@angular/core';
 
+/**
+ * Component with anti-patterns to test strictNullChecks flag
+ */
 @Component({
   selector: 'app-test-strict-null-checks',
   templateUrl: './test_strict_null_checks_component.html',

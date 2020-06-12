@@ -17,6 +17,9 @@
 import { Component, OnInit } from '@angular/core';
 import { BasicClass } from '../util/basic_class';
 
+/**
+ * Component with anti-patterns to test noImplicitAny flag
+ */
 @Component({
   selector: 'app-test-no-implicit-any',
   templateUrl: './test_no_implicit_any_component.html',

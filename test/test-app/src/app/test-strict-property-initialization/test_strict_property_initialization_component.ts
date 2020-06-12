@@ -17,6 +17,9 @@
 import { Component, OnInit } from '@angular/core';
 import { BasicInterface } from '../util/basic_interface';
 
+/**
+ * Component with anti-patterns to test strictPropertyInitialization flag
+ */
 @Component({
   selector: 'app-test-strict-property-initialization',
   templateUrl: './test_strict_property_initialization_component.html',
