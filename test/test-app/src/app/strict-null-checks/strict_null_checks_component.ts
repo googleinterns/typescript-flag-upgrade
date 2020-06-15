@@ -20,10 +20,10 @@ import { Component, OnInit } from '@angular/core';
  * Component with anti-patterns to test strictNullChecks flag
  */
 @Component({
-  selector: 'app-test-strict-null-checks',
-  templateUrl: './test_strict_null_checks_component.html',
+  selector: 'app-strict-null-checks',
+  templateUrl: './strict_null_checks_component.html',
 })
-export class TestStrictNullChecksComponent implements OnInit {
+export class StrictNullChecksComponent implements OnInit {
   // Test: Assign class member to null
   // Fix: shouldBeNumber: number | null;
   shouldBeNumber: number;

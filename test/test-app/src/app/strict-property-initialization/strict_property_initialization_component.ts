@@ -21,10 +21,10 @@ import { BasicInterface } from '../util/basic_interface';
  * Component with anti-patterns to test strictPropertyInitialization flag
  */
 @Component({
-  selector: 'app-test-strict-property-initialization',
-  templateUrl: './test_strict_property_initialization_component.html',
+  selector: 'app-strict-property-initialization',
+  templateUrl: './strict_property_initialization_component.html',
 })
-export class TestStrictPropertyInitializationComponent implements OnInit {
+export class StrictPropertyInitializationComponent implements OnInit {
   // Test: Unassigned scalar property
   // Fix: private unAssignedScalar: boolean | undefined;
   private unAssignedScalar: boolean;

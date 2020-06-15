@@ -20,10 +20,10 @@ import { Component, OnInit } from '@angular/core';
  * Component with anti-patterns to test noImplicitReturns flag
  */
 @Component({
-  selector: 'app-test-no-implicit-returns',
-  templateUrl: './test_no_implicit_returns_component.html',
+  selector: 'app-no-implicit-returns',
+  templateUrl: './no_implicit_returns_component.html',
 })
-export class TestNoImplicitReturnsComponent implements OnInit {
+export class NoImplicitReturnsComponent implements OnInit {
   noEndReturnAlice: string | undefined;
   noEndReturnBob: string | undefined;
   noReturnInIfAlice: string | undefined;

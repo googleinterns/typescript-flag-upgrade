@@ -1,10 +1,10 @@
 import { Component, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app_routing_module';
-import { TestNoImplicitReturnsComponent } from './test-no-implicit-returns/test_no_implicit_returns_component';
-import { TestStrictNullChecksComponent } from './test-strict-null-checks/test_strict_null_checks_component';
-import { TestStrictPropertyInitializationComponent } from './test-strict-property-initialization/test_strict_property_initialization_component';
-import { TestNoImplicitAnyComponent } from './test-no-implicit-any/test_no_implicit_any_component';
+import { NoImplicitReturnsComponent } from './no-implicit-returns/no_implicit_returns_component';
+import { StrictNullChecksComponent } from './strict-null-checks/strict_null_checks_component';
+import { StrictPropertyInitializationComponent } from './strict-property-initialization/strict_property_initialization_component';
+import { NoImplicitAnyComponent } from './no-implicit-any/no_implicit_any_component';
 
 /**
  * Base component
@@ -23,10 +23,10 @@ export class AppComponent {
 @NgModule({
   declarations: [
     AppComponent,
-    TestNoImplicitReturnsComponent,
-    TestStrictNullChecksComponent,
-    TestStrictPropertyInitializationComponent,
-    TestNoImplicitAnyComponent,
+    NoImplicitReturnsComponent,
+    StrictNullChecksComponent,
+    StrictPropertyInitializationComponent,
+    NoImplicitAnyComponent,
   ],
   imports: [BrowserModule, AppRoutingModule],
   providers: [],
