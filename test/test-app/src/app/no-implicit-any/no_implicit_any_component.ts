@@ -16,6 +16,7 @@
 
 import { Component, OnInit } from '@angular/core';
 import { BasicClass } from '../util/basic_class';
+import { BasicInterface } from '../util/basic_interface';
 
 /**
  * Component with anti-patterns to test noImplicitAny flag
@@ -52,6 +53,22 @@ export class NoImplicitAnyComponent implements OnInit {
   // Fix: calledByPassString(val: string) {}
   calledByPassString(val) {}
 
+  // Test: Infer non-scalar type from method signatures called by func
+  // Fix: callsTakeObject(val: BasicInterface) {
+  callsTakeObject(val) {
+    this.takeObject(val);
+  }
+
+  takeObject(val: BasicInterface) {}
+
+  // Test: Infer non-scalar types from method signatures
+  passObject(val: BasicInterface) {
+    this.calledByPassObject(val);
+  }
+
+  // Fix: calledByPassObject(val: BasicInterface) {}
+  calledByPassObject(val) {}
+
   // Test: Concatenates multiple possible types
   passNum(val: number) {
     this.calledByPassNumAndPassString(val);
@@ -72,6 +89,11 @@ export class NoImplicitAnyComponent implements OnInit {
     new BasicClass().takeStringSeparateClass(val);
   }
 
+  // Fix: callsTakeStringInSeparateClass(val: BasicInterface) {
+  callsTakeObjectInSeparateClass(val) {
+    new BasicClass().takeObjectSeparateClass(val);
+  }
+
   // Lists
 
   // Test: Assign any array to defined type array
@@ -80,6 +102,13 @@ export class NoImplicitAnyComponent implements OnInit {
     // Fix: const anyArray: string[] = [];
     const anyArray = [];
     mustBeStringArray = anyArray;
+  }
+
+  assignToDefinedNonScalarArray() {
+    let mustBeObjectArray: BasicInterface[];
+    // Fix: const anyArray: BasicInterface[] = [];
+    const anyArray = [];
+    mustBeObjectArray = anyArray;
   }
 
   // Objects: For all object tests, possibility to leave smart comments detailing what the object structure should be

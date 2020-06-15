@@ -15,6 +15,10 @@
 */
 
 import { Component, OnInit } from '@angular/core';
+import { BasicInterface } from '../util/basic_interface';
+import { BasicClass } from '../util/basic_class';
+import { pipe } from 'rxjs';
+import { map, filter } from 'rxjs/operators';
 
 /**
  * Component with anti-patterns to test strictNullChecks flag
@@ -24,12 +28,15 @@ import { Component, OnInit } from '@angular/core';
   templateUrl: './strict_null_checks_component.html',
 })
 export class StrictNullChecksComponent implements OnInit {
-  // Test: Assign class member to null
+  // Test: Assign class member to null/undefined
   // Fix: shouldBeNumber: number | null;
   shouldBeNumber: number;
+  // Fix: shouldBeInterface: BasicInterface | undefined;
+  shouldBeInterface: BasicInterface;
 
   constructor() {
     this.shouldBeNumber = null;
+    this.shouldBeInterface = undefined;
   }
 
   ngOnInit(): void {}
@@ -68,6 +75,17 @@ export class StrictNullChecksComponent implements OnInit {
       n = null;
     }
     n = 5;
+  }
+
+  // Test: Assign non-scalar variable to null/undefined
+  assignNonScalarNullUndefined() {
+    // Fix: let n: BasicInterface | null = null;
+    let n: BasicInterface;
+    // Fix: let u: BasicInterface | undefined = undefined;
+    let u: BasicInterface;
+
+    n = null;
+    u = undefined;
   }
 
   // Test: Pass null value to function
@@ -111,9 +129,13 @@ export class StrictNullChecksComponent implements OnInit {
 
   // Test: Add element to empty list
   addToEmptyList() {
-    // Fix: const emptyList: number[] = []
+    // Fix: const emptyList: number[] = [];
     const emptyList = [];
     emptyList.push(5);
+
+    // Fix: const emptyListNonScalar: BasicClass[] = [];
+    const emptyListNonScalar = [];
+    emptyListNonScalar.push(new BasicClass());
   }
 
   // Test: Return null value but not in return type
@@ -129,5 +151,18 @@ export class StrictNullChecksComponent implements OnInit {
 
     // Fix: console.log('V: ' + (v != null ? v.toString() : 'unknown'));
     console.log('V: ' + v != null ? v.toString() : 'unknown');
+  }
+
+  // Test: Inline function
+  testInline() {
+    const testPipe = pipe(
+      map((n: number) => {
+        return null;
+      }),
+      // Fix: filter((n: number | null) => {
+      filter((n: number) => {
+        return false;
+      })
+    );
   }
 }

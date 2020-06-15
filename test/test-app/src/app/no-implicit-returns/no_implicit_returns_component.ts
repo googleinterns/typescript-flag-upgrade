@@ -15,6 +15,8 @@
 */
 
 import { Component, OnInit } from '@angular/core';
+import { pipe } from 'rxjs';
+import { map, filter } from 'rxjs/operators';
 
 /**
  * Component with anti-patterns to test noImplicitReturns flag
@@ -54,5 +56,20 @@ export class NoImplicitReturnsComponent implements OnInit {
       return;
     }
     return 'Hello Not-Bob';
+  }
+
+  // Test: Inline function
+  testInline() {
+    const testPipe = pipe(
+      map((n: number) => {
+        if (n) {
+          return n;
+        }
+        // Fix: return undefined;
+      }),
+      filter((n: number) => {
+        return false;
+      })
+    );
   }
 }

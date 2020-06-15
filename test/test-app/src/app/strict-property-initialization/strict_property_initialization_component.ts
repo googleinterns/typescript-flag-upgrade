@@ -42,7 +42,11 @@ export class StrictPropertyInitializationComponent implements OnInit {
 
   constructor() {
     this.assignedInConstructor = true;
+    this.takesInBoolean(this.unAssignedScalar);
   }
 
   ngOnInit(): void {}
+
+  // Fix: takesInBoolean(v: boolean | undefined) {}
+  takesInBoolean(v: boolean) {}
 }
