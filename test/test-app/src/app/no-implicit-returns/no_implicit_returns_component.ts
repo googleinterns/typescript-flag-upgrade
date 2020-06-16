@@ -58,6 +58,15 @@ export class NoImplicitReturnsComponent implements OnInit {
     return 'Hello Not-Bob';
   }
 
+  // Test: Implicit return undefined at end of function
+  noExplitReturnUndefined(name: string) {
+    if (name === 'Bob') {
+      return 'Hello Bob';
+    }
+    // Fix: return undefined;
+    return;
+  }
+
   // Test: Inline function
   testInline() {
     const testPipe = pipe(
