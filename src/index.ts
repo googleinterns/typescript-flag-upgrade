@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /*
     Copyright 2020 Google LLC
 
@@ -14,30 +16,37 @@
     limitations under the License.
 */
 
-import yargs = require('yargs');
+import yargs from 'yargs';
+import {Runner} from './runner';
 
 const args = yargs.options({
   p: {
     alias: 'project',
     demandOption: true,
-    default: process.cwd(),
-    describe: 'Path to tsconfig',
+    default: 'tsconfig.json',
+    describe: 'Path to TypeScript config file',
     type: 'string',
   },
   m: {
     alias: 'mode',
     demandOption: true,
     default: 'all',
-    describe: "Possible modes: 'comment' or 'all'",
+    describe:
+      "Choose between only leaving comments ('comment') or both comments and mutative fixes ('all')",
     type: 'string',
   },
   i: {
     alias: 'in',
-    demandOption: true,
-    default: process.cwd(),
-    describe: 'Path to tsconfig',
+    demandOption: false,
+    describe: 'Override config and specify input directory',
+    type: 'string',
+  },
+  l: {
+    alias: 'log',
+    demandOption: false,
+    describe: 'Specify file for logging',
     type: 'string',
   },
 }).argv;
 
-console.log(args);
+new Runner(args).run();

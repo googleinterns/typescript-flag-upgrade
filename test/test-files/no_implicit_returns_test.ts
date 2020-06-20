@@ -14,18 +14,22 @@
     limitations under the License.
 */
 
-import {Project} from 'ts-morph';
+function noEndValueReturn(name: string) {
+  if (name === 'Bob') {
+    return 'Hello Bob';
+  }
+}
 
-const project = new Project({
-  tsConfigFilePath: './test/test-app/tsconfig.json',
-});
+function noValueReturnInIf(name: string) {
+  if (name === 'Bob') {
+    return;
+  }
+  return 'Hello Not-Bob';
+}
 
-// ...lots of code here that manipulates, copies, moves, and deletes files...
-console.log('test');
-
-const sourceFiles = project.getSourceFiles();
-
-console.log(sourceFiles);
-
-// when you're all done, call this and it will save everything to the file system
-// await project.save();
+function noExplitReturnUndefined(name: string) {
+  if (name === 'Bob') {
+    return 'Hello Bob';
+  }
+  return;
+}

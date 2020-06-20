@@ -14,9 +14,9 @@
     limitations under the License.
 */
 
-import { Component, OnInit } from '@angular/core';
-import { pipe } from 'rxjs';
-import { map, filter } from 'rxjs/operators';
+import {Component, OnInit} from '@angular/core';
+import {pipe} from 'rxjs';
+import {map, filter} from 'rxjs/operators';
 
 /**
  * Component with anti-patterns to test noImplicitReturns flag
