@@ -17,7 +17,7 @@
 import path from 'path';
 import {Project, Diagnostic, ts} from 'ts-morph';
 import {ArgumentOptions} from './types';
-import {fixNoImplicitReturns} from './manipulators/no_implicit_returns';
+import {fixNoImplicitReturns} from './manipulators/no_implicit_returns_manipulator';
 
 export class Runner {
   private args: ArgumentOptions;
