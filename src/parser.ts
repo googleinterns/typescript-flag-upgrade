@@ -16,7 +16,7 @@
 
 import {Diagnostic, ts, Project} from 'ts-morph';
 
-/** Class for parsing a project and returning diagnostics */
+/** Class for parsing a project and returning diagnostics. */
 export class Parser {
   private project: Project;
 

@@ -18,12 +18,16 @@ import path from 'path';
 import {Emitter} from './emitter';
 import {Project} from 'ts-morph';
 
+/** Out-of-place emitter that emits to a dist directory. */
 export class OutOfPlaceEmitter extends Emitter {
   constructor(project: Project) {
     super(project);
   }
 
-  async emit() {
+  /**
+   * Creates dist directory and copies modified source files to it.
+   */
+  emit() {
     const srcDirs = this.project.getRootDirectories();
     const sourceFiles = this.project.getSourceFiles();
 

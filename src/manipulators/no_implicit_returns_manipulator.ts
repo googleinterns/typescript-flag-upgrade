@@ -19,7 +19,7 @@ import {Diagnostic, ts, Node, SyntaxKind, Project} from 'ts-morph';
 import {Manipulator} from './manipulator';
 
 /**
- * Manipulator that fixes for the noImplicitReturns compiler flag
+ * Manipulator that fixes for the noImplicitReturns compiler flag.
  * @extends {Manipulator}
  */
 export class NoImplicitReturnsManipulator extends Manipulator {
@@ -29,7 +29,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
   }
 
   /**
-   * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics
+   * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {

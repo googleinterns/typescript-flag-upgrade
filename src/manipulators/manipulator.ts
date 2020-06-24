@@ -16,13 +16,13 @@
 
 import {SourceFile, Project, Diagnostic, ts, Node, SyntaxKind} from 'ts-morph';
 
-/** Base class for manipulating AST to fix for flags */
+/** Base class for manipulating AST to fix for flags. */
 export abstract class Manipulator {
   project: Project;
   errorCodes: Set<number>;
 
   /**
-   * Sets project to be modified and relevant error codes for specific flags
+   * Sets project to be modified and relevant error codes for specific flags.
    * @param {Project} project - ts-morph project to be modified
    */
   constructor(project: Project) {
@@ -31,13 +31,13 @@ export abstract class Manipulator {
   }
 
   /**
-   * Manipulates AST of project to fix for a specific flag given diagnostics
+   * Manipulates AST of project to fix for a specific flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
    */
   abstract fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void;
 
   /**
-   * Checks if a list of diagnostics contains errors relevant to specific flag
+   * Checks if a list of diagnostics contains errors relevant to specific flag.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
    * @return {boolean} true if diagnostics contain error codes relevant to specific flag
    */
@@ -46,7 +46,7 @@ export abstract class Manipulator {
   }
 
   /**
-   * Filters a list of diagnostics for errors relevant to specific flag
+   * Filters a list of diagnostics for errors relevant to specific flag.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
    * @return {Diagnostic<ts.Diagnostic>[]} List of diagnostics with relevant error codes
    */
@@ -59,7 +59,7 @@ export abstract class Manipulator {
   }
 
   /**
-   * Retrieves the list of nodes corresponding to a list of diagnostics
+   * Retrieves the list of nodes corresponding to a list of diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
    * @return {[Node<ts.Node>, Diagnostic<ts.Diagnostic>][]} List of corresponding [node, diagnostic] tuples
    */

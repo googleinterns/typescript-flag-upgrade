@@ -18,7 +18,7 @@ import {Manipulator} from './manipulator';
 import {Project, Diagnostic, ts} from 'ts-morph';
 
 /**
- * Manipulator that fixes for the noImplicitAny compiler flag
+ * Manipulator that fixes for the noImplicitAny compiler flag.
  * @extends {Manipulator}
  */
 export class NoImplicitAnyManipulator extends Manipulator {

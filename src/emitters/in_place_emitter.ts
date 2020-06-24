@@ -17,11 +17,15 @@
 import {Emitter} from './emitter';
 import {Project} from 'ts-morph';
 
+/** In-place emitter that modifies input files. */
 export class InPlaceEmitter extends Emitter {
   constructor(project: Project) {
     super(project);
   }
 
+  /**
+   * Overwrites original input source files.
+   */
   emit() {
     this.project.saveSync();
   }
