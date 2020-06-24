@@ -13,3 +13,15 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+
+import {Manipulator} from './manipulator';
+import {Project, Diagnostic, ts} from 'ts-morph';
+
+export class StrictNullChecksManipulator extends Manipulator {
+  constructor(project: Project) {
+    super(project);
+    this.errorCodes = new Set<number>([]);
+  }
+
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}
+}

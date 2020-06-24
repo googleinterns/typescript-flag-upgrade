@@ -15,34 +15,66 @@
 */
 
 import path from 'path';
-import {Project, Diagnostic, ts} from 'ts-morph';
+import {Project} from 'ts-morph';
 import {ArgumentOptions} from './types';
-import {fixNoImplicitReturns} from './manipulators/no_implicit_returns_manipulator';
+import {Emitter} from './emitters/emitter';
+import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
+import {NoImplicitAnyManipulator} from './manipulators/no_implicit_any_manipulator';
+import {StrictNullChecksManipulator} from './manipulators/strict_null_checks_manipulator';
+import {StrictPropertyInitializationManipulator} from './manipulators/strict_property_initialization_manipulator';
+import {Parser} from './parser';
+import {Manipulator} from './manipulators/manipulator';
+import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
 
 export class Runner {
   private args: ArgumentOptions;
   private project: Project;
 
+  private parser: Parser;
+  private emitter: Emitter;
+
+  private manipulators: Manipulator[];
+
   constructor(args: ArgumentOptions) {
     this.args = args;
-    this.project = this.init();
+    this.project = this.createProject();
+    this.parser = new Parser(this.project);
+    this.manipulators = [
+      new NoImplicitReturnsManipulator(this.project),
+      new NoImplicitAnyManipulator(this.project),
+      new StrictPropertyInitializationManipulator(this.project),
+      new StrictNullChecksManipulator(this.project),
+    ];
+    this.emitter = new OutOfPlaceEmitter(this.project);
   }
 
   public run() {
     const sourceFiles = this.project.getSourceFiles();
-
     console.log(
       sourceFiles.map(file => {
         return file.getFilePath();
       })
     );
-    const errors = this.parse();
 
-    fixNoImplicitReturns(errors);
-    this.emit();
+    let errors = this.parser.parse();
+    let errorsExist;
+
+    do {
+      errorsExist = false;
+      for (const manipulator of this.manipulators) {
+        if (manipulator.detectErrors(errors)) {
+          manipulator.fixErrors(errors);
+          errorsExist = true;
+          errors = this.parser.parse();
+          break;
+        }
+      }
+    } while (errorsExist);
+
+    this.emitter.emit();
   }
 
-  private init(): Project {
+  private createProject(): Project {
     if (this.args.i) {
       const project = new Project({
         tsConfigFilePath: path.join(process.cwd(), this.args.p),
@@ -64,13 +96,5 @@ export class Runner {
     return new Project({
       tsConfigFilePath: path.join(process.cwd(), this.args.p),
     });
-  }
-
-  private parse(): Diagnostic<ts.Diagnostic>[] {
-    return this.project.getPreEmitDiagnostics();
-  }
-
-  private emit() {
-    this.project.save();
   }
 }

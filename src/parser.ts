@@ -14,14 +14,16 @@
     limitations under the License.
 */
 
-import {Manipulator} from './manipulator';
-import {Project, Diagnostic, ts} from 'ts-morph';
+import {Diagnostic, ts, Project} from 'ts-morph';
 
-export class StrictPropertyInitializationManipulator extends Manipulator {
+export class Parser {
+  private project: Project;
+
   constructor(project: Project) {
-    super(project);
-    this.errorCodes = new Set<number>([]);
+    this.project = project;
   }
 
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}
+  parse(): Diagnostic<ts.Diagnostic>[] {
+    return this.project.getPreEmitDiagnostics();
+  }
 }
