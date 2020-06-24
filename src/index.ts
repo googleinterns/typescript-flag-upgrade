@@ -35,7 +35,7 @@ const args = yargs
       demandOption: true,
       default: 'all',
       description:
-        "Choose between only leaving comments ('comment') or both comments and mutative fixes ('all')",
+        "Option between only leaving comments ('comment') or both comments and mutative fixes ('all')",
       type: 'string',
       choices: ['all', 'comment'],
     },

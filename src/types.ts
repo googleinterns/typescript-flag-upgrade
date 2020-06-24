@@ -16,9 +16,16 @@
 
 export type ArgumentOptions = {
   [x: string]: unknown;
+  /** Relative path to TypeScript config file */
   p: string;
+  /**
+   * Option between only leaving comments ('comment') or both comments and
+   * mutative fixes ('all')
+   */
   m: string;
+  /** Override config and specify input directory */
   i: string | undefined;
+  /** Specify file for logging */
   l: string | undefined;
   _: string[];
   $0: string;
