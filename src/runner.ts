@@ -48,7 +48,7 @@ export class Runner {
     this.emitter = new OutOfPlaceEmitter(this.project);
   }
 
-  public run() {
+  run() {
     const sourceFiles = this.project.getSourceFiles();
     console.log(
       sourceFiles.map(file => {
@@ -79,15 +79,17 @@ export class Runner {
       const project = new Project({
         tsConfigFilePath: path.join(process.cwd(), this.args.p),
         addFilesFromTsConfig: false,
+        compilerOptions: {
+          strictNullChecks: true,
+          strictPropertyInitialization: true,
+          noImplicitAny: true,
+          noImplicitReturns: true,
+        },
       });
 
-      if (path.extname(this.args.i)) {
-        project.addSourceFilesAtPaths(path.join(process.cwd(), this.args.i));
-      } else {
-        project.addSourceFilesAtPaths(
-          path.join(process.cwd(), this.args.i) + '/**/*{.d.ts,.ts}'
-        );
-      }
+      project.addSourceFilesAtPaths(
+        path.join(process.cwd(), this.args.i) + '/**/*{.d.ts,.ts}'
+      );
 
       project.resolveSourceFileDependencies();
       return project;
@@ -95,6 +97,12 @@ export class Runner {
 
     return new Project({
       tsConfigFilePath: path.join(process.cwd(), this.args.p),
+      compilerOptions: {
+        strictNullChecks: true,
+        strictPropertyInitialization: true,
+        noImplicitAny: true,
+        noImplicitReturns: true,
+      },
     });
   }
 }

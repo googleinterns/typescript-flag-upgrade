@@ -19,34 +19,44 @@
 import yargs from 'yargs';
 import {Runner} from './runner';
 
-const args = yargs.options({
-  p: {
-    alias: 'project',
-    demandOption: true,
-    default: 'tsconfig.json',
-    describe: 'Path to TypeScript config file',
-    type: 'string',
-  },
-  m: {
-    alias: 'mode',
-    demandOption: true,
-    default: 'all',
-    describe:
-      "Choose between only leaving comments ('comment') or both comments and mutative fixes ('all')",
-    type: 'string',
-  },
-  i: {
-    alias: 'in',
-    demandOption: false,
-    describe: 'Override config and specify input directory',
-    type: 'string',
-  },
-  l: {
-    alias: 'log',
-    demandOption: false,
-    describe: 'Specify file for logging',
-    type: 'string',
-  },
-}).argv;
+const args = yargs
+  .options({
+    p: {
+      alias: 'project',
+      demandOption: true,
+      default: 'tsconfig.json',
+      description:
+        'Relative path to TypeScript config file (eg. "./dir/tsconfig.json")',
+      normalize: true,
+      type: 'string',
+    },
+    m: {
+      alias: 'mode',
+      demandOption: true,
+      default: 'all',
+      description:
+        "Choose between only leaving comments ('comment') or both comments and mutative fixes ('all')",
+      type: 'string',
+      choices: ['all', 'comment'],
+    },
+    i: {
+      alias: 'input_directory',
+      demandOption: false,
+      description: 'Override config and specify input directory',
+      normalize: true,
+      type: 'string',
+    },
+    l: {
+      alias: 'log_location',
+      demandOption: false,
+      description: 'Specify file for logging',
+      normalize: true,
+      type: 'string',
+    },
+  })
+  .usage(
+    'typescript-flag-upgrade -p <path-to-config> [-m <all|comment>] [-i <path-to-input-dir>] [-l <path-to-log>]'
+  )
+  .epilogue('Copyright 2020 Google LLC').argv;
 
 new Runner(args).run();
