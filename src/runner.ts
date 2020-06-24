@@ -74,6 +74,11 @@ export class Runner {
     let prevErrors = errors;
     let errorsExist;
 
+    // errors.forEach(error => {
+    //   console.log(error.getCode());
+    //   console.log(error.getMessageText());
+    // });
+
     do {
       errorsExist = false;
       for (const manipulator of this.manipulators) {

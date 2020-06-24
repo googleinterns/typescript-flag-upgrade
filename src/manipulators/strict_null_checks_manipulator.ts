@@ -14,9 +14,10 @@
     limitations under the License.
 */
 
+import _ from 'lodash';
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
 import {ErrorDetector} from 'error_detectors/error_detector';
+import {Diagnostic, ts, SyntaxKind, Node, StatementedNode} from 'ts-morph';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.
@@ -27,8 +28,62 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   constructor(errorDetector: ErrorDetector) {
     super(errorDetector, new Set<number>([]));
-    this.nodeKinds = new Set<SyntaxKind>();
+    this.nodeKinds = new Set<number>([2531]);
   }
 
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}
+  /**
+   * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics.
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   */
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+    // Retrieve AST nodes corresponding to diagnostics with relevant error codes
+    const errorNodes = this.filterNodesFromDiagnostics(
+      this.filterErrors(diagnostics),
+      new Set<SyntaxKind>([SyntaxKind.Identifier])
+    );
+
+    const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
+
+    // Iterate through each node in reverse traversal order to prevent interference
+    _.forEachRight(errorNodes, ([errorNode, diagnostic]) => {
+      const parent = errorNode.getParentOrThrow();
+
+      switch (diagnostic.getCode()) {
+        // When object is possibly null, add definite assignment assertion to identifier
+        case 2531: {
+          if (
+            Node.isIdentifier(errorNode) &&
+            Node.isPropertyAccessExpression(parent)
+          ) {
+            const newNode = errorNode.replaceWithText(
+              errorNode.getText() + '!'
+            );
+
+            const modifiedStatement = newNode.getParentWhileOrThrow(
+              (parent, child) => {
+                return !(
+                  Node.isStatementedNode(parent) && Node.isStatement(child)
+                );
+              }
+            );
+
+            modifiedStatementedNodes.add([
+              (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
+              modifiedStatement.getChildIndex(),
+            ]);
+          }
+          break;
+        }
+      }
+    });
+
+    modifiedStatementedNodes.forEach(
+      ([modifiedStatementedNode, indexToInsert]) => {
+        modifiedStatementedNode.insertStatements(
+          indexToInsert,
+          '// typescript-flag-upgrade automated fix: --strictNullChecks'
+        );
+      }
+    );
+  }
 }
