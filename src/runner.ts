@@ -26,6 +26,7 @@ import {Parser} from './parser';
 import {Manipulator} from './manipulators/manipulator';
 import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
 
+/** Class responsible for running the execution of the tool */
 export class Runner {
   private args: ArgumentOptions;
   private project: Project;
@@ -35,6 +36,10 @@ export class Runner {
 
   private manipulators: Manipulator[];
 
+  /**
+   * Instantiates project and appropriate modules
+   * @param {ArgumentOptions} args - Arguments passed
+   */
   constructor(args: ArgumentOptions) {
     this.args = args;
     this.project = this.createProject();
@@ -48,6 +53,9 @@ export class Runner {
     this.emitter = new OutOfPlaceEmitter(this.project);
   }
 
+  /**
+   * Runs through execution of parsing, manipulating, and emitting
+   */
   run() {
     const sourceFiles = this.project.getSourceFiles();
     console.log(
@@ -74,6 +82,10 @@ export class Runner {
     this.emitter.emit();
   }
 
+  /**
+   * Creates a ts-morph project from filepath
+   * @return {Project} Created project
+   */
   private createProject(): Project {
     if (this.args.i) {
       const project = new Project({

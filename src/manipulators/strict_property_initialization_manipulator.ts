@@ -17,6 +17,10 @@
 import {Manipulator} from './manipulator';
 import {Project, Diagnostic, ts} from 'ts-morph';
 
+/**
+ * Manipulator that fixes for the strictPropertyInitialization compiler flag
+ * @extends {Manipulator}
+ */
 export class StrictPropertyInitializationManipulator extends Manipulator {
   constructor(project: Project) {
     super(project);

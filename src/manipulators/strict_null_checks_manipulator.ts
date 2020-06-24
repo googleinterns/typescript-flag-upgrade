@@ -17,6 +17,10 @@
 import {Manipulator} from './manipulator';
 import {Project, Diagnostic, ts} from 'ts-morph';
 
+/**
+ * Manipulator that fixes for the strictNullChecks compiler flag
+ * @extends {Manipulator}
+ */
 export class StrictNullChecksManipulator extends Manipulator {
   constructor(project: Project) {
     super(project);

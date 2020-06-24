@@ -18,13 +18,22 @@ import _ from 'lodash';
 import {Diagnostic, ts, Node, SyntaxKind, Project} from 'ts-morph';
 import {Manipulator} from './manipulator';
 
+/**
+ * Manipulator that fixes for the noImplicitReturns compiler flag
+ * @extends {Manipulator}
+ */
 export class NoImplicitReturnsManipulator extends Manipulator {
   constructor(project: Project) {
     super(project);
     this.errorCodes = new Set<number>([7030]);
   }
 
+  /**
+   * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+    // Retrieve AST nodes corresponding to diagnostics with relevant error codes
     const errorNodes = this.filterNodesFromDiagnostics(
       this.filterErrors(diagnostics),
       new Set<SyntaxKind>([
@@ -34,10 +43,12 @@ export class NoImplicitReturnsManipulator extends Manipulator {
       ])
     );
 
+    // Iterate through each node in reverse traversal order to prevent interference
     _.forEachRight(errorNodes, ([errorNode]) => {
       const parent = errorNode.getParent();
 
       switch (errorNode.getKind()) {
+        // When node is a function or method, add return undefined statement
         case SyntaxKind.Identifier: {
           if (
             parent &&
@@ -52,6 +63,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           break;
         }
 
+        // When node is an empty return statement, replace it with return undefined
         case SyntaxKind.ReturnStatement: {
           if (parent && Node.isBlock(parent)) {
             const index = errorNode.getChildIndex();
@@ -64,6 +76,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           break;
         }
 
+        // If node is an inline arrow function, add return undefined statement
         case SyntaxKind.ArrowFunction: {
           const child = errorNode.getLastChildByKind(SyntaxKind.Block);
           if (child) {
@@ -75,9 +88,6 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           break;
         }
       }
-
-      // const printer = ts.createPrinter({removeComments: false});
-      // console.log(printer.printFile(errorNode.getSourceFile().compilerNode));
     });
   }
 }
