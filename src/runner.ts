@@ -75,8 +75,9 @@ export class Runner {
     let errorsExist;
 
     // errors.forEach(error => {
-    //   console.log(error.getCode());
-    //   console.log(error.getMessageText());
+    //   if (error.getCode() === 2322) {
+    //     console.log(error.getSource());
+    //   }
     // });
 
     do {

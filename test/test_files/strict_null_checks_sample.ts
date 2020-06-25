@@ -50,24 +50,26 @@ function assignInBranch(goInBranch: boolean) {
 }
 
 // Test: Pass null value to function
-// Fix: doesNotExpectNull(n: number | null) {}
 function doesNotExpectNull(n: number) {}
 
 function passesNullValue() {
-  doesNotExpectNull(null);
+  const n: number | null = null;
+  // Fix: doesNotExpectNull(n!);
+  doesNotExpectNull(n);
 }
 
 // Test: Pass null and undefined value to function
-// Fix: doesNotExpectNullUndefined(n: number | null | undefined) {}
 function doesNotExpectNullUndefined(n: number) {}
 
 function passesNullVariable() {
   const n: number | null = null;
+  // Fix: doesNotExpectNullUndefined(n!);
   doesNotExpectNullUndefined(n);
 }
 
 function passesUndefinedVariable() {
   const n: number | undefined = undefined;
+  // Fix: doesNotExpectNullUndefined(n!);
   doesNotExpectNullUndefined(n);
 }
 
@@ -96,9 +98,10 @@ function addToEmptyList() {
 }
 
 // Test: Return null value but not in return type
-// Fix: unexpectedlyReturnsNull(): number | null {
 function unexpectedlyReturnsNull(): number {
-  return null;
+  const n: number | null = null;
+  // Fix: return n!;
+  return n;
 }
 
 // Test: Object is possibly null

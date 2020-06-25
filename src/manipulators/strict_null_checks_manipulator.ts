@@ -28,7 +28,7 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   constructor(errorDetector: ErrorDetector) {
     super(errorDetector, new Set<number>([]));
-    this.nodeKinds = new Set<number>([2531]);
+    this.nodeKinds = new Set<number>([2531, 2322]);
   }
 
   /**
@@ -39,7 +39,11 @@ export class StrictNullChecksManipulator extends Manipulator {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
     const errorNodes = this.filterNodesFromDiagnostics(
       this.filterErrors(diagnostics),
-      new Set<SyntaxKind>([SyntaxKind.Identifier])
+      new Set<SyntaxKind>([
+        SyntaxKind.Identifier,
+        SyntaxKind.PropertyAccessExpression,
+        SyntaxKind.CallExpression,
+      ])
     );
 
     const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
@@ -74,6 +78,14 @@ export class StrictNullChecksManipulator extends Manipulator {
           }
           break;
         }
+
+        //
+        // case 2322: {
+        //   console.log(errorNode.getText());
+        //   console.log(errorNode.getKindName());
+        //   console.log(errorNode.getType().getText());
+        //   break;
+        // }
       }
     });
 

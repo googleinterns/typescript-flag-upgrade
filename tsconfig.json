@@ -11,7 +11,8 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "sourceMap": true
   },
   "include": ["src/**/*.ts", "experimental/**/*.ts"]
 }
