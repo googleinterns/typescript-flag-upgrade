@@ -54,7 +54,7 @@ function assignInBranch(goInBranch: boolean) {
 function doesNotExpectNull(n: number) {}
 
 function passesNullValue() {
-  this.doesNotExpectNull(null);
+  doesNotExpectNull(null);
 }
 
 // Test: Pass null and undefined value to function
@@ -63,12 +63,12 @@ function doesNotExpectNullUndefined(n: number) {}
 
 function passesNullVariable() {
   const n: number | null = null;
-  this.doesNotExpectNullUndefined(n);
+  doesNotExpectNullUndefined(n);
 }
 
 function passesUndefinedVariable() {
   const n: number | undefined = undefined;
-  this.doesNotExpectNullUndefined(n);
+  doesNotExpectNullUndefined(n);
 }
 
 // Test: Assign argument to null
@@ -80,8 +80,8 @@ function turnsIntoNull(n: number) {
 // Test: Assign non-null to null variable
 function assignNonNullValueToNullVar() {
   // Fix: let n: null | number = null;
-  let n = null;
-  n = this.returnsNumber();
+  let n: null = null;
+  n = returnsNumber();
 }
 
 function returnsNumber() {
