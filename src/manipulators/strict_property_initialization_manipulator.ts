@@ -15,16 +15,16 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Project, Diagnostic, ts} from 'ts-morph';
+import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
+import {DiagnosticUtil} from '../diagnostic_util';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
  * @extends {Manipulator}
  */
 export class StrictPropertyInitializationManipulator extends Manipulator {
-  constructor(project: Project) {
-    super(project);
-    this.errorCodes = new Set<number>([]);
+  constructor(diagnosticUtil: DiagnosticUtil) {
+    super(diagnosticUtil, new Set<number>([]), new Set<SyntaxKind>([]));
   }
 
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}

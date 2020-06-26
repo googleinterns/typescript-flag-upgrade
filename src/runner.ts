@@ -25,6 +25,7 @@ import {StrictPropertyInitializationManipulator} from './manipulators/strict_pro
 import {Parser} from './parser';
 import {Manipulator} from './manipulators/manipulator';
 import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
+import {DiagnosticUtil} from './diagnostic_util';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
@@ -33,6 +34,8 @@ export class Runner {
 
   private parser: Parser;
   private emitter: Emitter;
+
+  private diagnosticUtil: DiagnosticUtil;
 
   private manipulators: Manipulator[];
 
@@ -44,11 +47,12 @@ export class Runner {
     this.args = args;
     this.project = this.createProject();
     this.parser = new Parser(this.project);
+    this.diagnosticUtil = new DiagnosticUtil();
     this.manipulators = [
-      new NoImplicitReturnsManipulator(this.project),
-      new NoImplicitAnyManipulator(this.project),
-      new StrictPropertyInitializationManipulator(this.project),
-      new StrictNullChecksManipulator(this.project),
+      new NoImplicitReturnsManipulator(this.diagnosticUtil),
+      new NoImplicitAnyManipulator(this.diagnosticUtil),
+      new StrictPropertyInitializationManipulator(this.diagnosticUtil),
+      new StrictNullChecksManipulator(this.diagnosticUtil),
     ];
     this.emitter = new OutOfPlaceEmitter(this.project);
   }
@@ -70,7 +74,9 @@ export class Runner {
     do {
       errorsExist = false;
       for (const manipulator of this.manipulators) {
-        if (manipulator.detectErrors(errors)) {
+        if (
+          this.diagnosticUtil.detectErrors(errors, manipulator.diagnosticCodes)
+        ) {
           manipulator.fixErrors(errors);
           errorsExist = true;
           errors = this.parser.parse();

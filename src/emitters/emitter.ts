@@ -31,5 +31,5 @@ export abstract class Emitter {
   /**
    * Emits project, implemented by subclasses.
    */
-  emit() {}
+  emit(): void {}
 }

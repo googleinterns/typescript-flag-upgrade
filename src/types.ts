@@ -14,6 +14,8 @@
     limitations under the License.
 */
 
+import {Node, ts, Diagnostic} from 'ts-morph';
+
 export type ArgumentOptions = {
   [x: string]: unknown;
   /** Relative path to TypeScript config file */
@@ -30,3 +32,9 @@ export type ArgumentOptions = {
   _: string[];
   $0: string;
 };
+
+export type NodeDiagnosticList = [Node<ts.Node>, Diagnostic<ts.Diagnostic>][];
+
+export enum DiagnosticCodes {
+  CodePathNoReturn = 7030,
+}

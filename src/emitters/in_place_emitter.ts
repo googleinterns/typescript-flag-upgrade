@@ -26,7 +26,7 @@ export class InPlaceEmitter extends Emitter {
   /**
    * Overwrites original input source files.
    */
-  emit() {
+  emit(): void {
     this.project.saveSync();
   }
 }

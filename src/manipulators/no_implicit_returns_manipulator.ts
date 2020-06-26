@@ -15,17 +15,26 @@
 */
 
 import _ from 'lodash';
-import {Diagnostic, ts, Node, SyntaxKind, Project} from 'ts-morph';
+import {Diagnostic, ts, Node, SyntaxKind} from 'ts-morph';
 import {Manipulator} from './manipulator';
+import {DiagnosticCodes} from '../types';
+import {DiagnosticUtil} from '../diagnostic_util';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
  * @extends {Manipulator}
  */
 export class NoImplicitReturnsManipulator extends Manipulator {
-  constructor(project: Project) {
-    super(project);
-    this.errorCodes = new Set<number>([7030]);
+  constructor(diagnosticUtil: DiagnosticUtil) {
+    super(
+      diagnosticUtil,
+      new Set<number>([DiagnosticCodes.CodePathNoReturn]),
+      new Set<SyntaxKind>([
+        SyntaxKind.Identifier,
+        SyntaxKind.ReturnStatement,
+        SyntaxKind.ArrowFunction,
+      ])
+    );
   }
 
   /**
@@ -34,13 +43,10 @@ export class NoImplicitReturnsManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
-    const errorNodes = this.filterNodesFromDiagnostics(
-      this.filterErrors(diagnostics),
-      new Set<SyntaxKind>([
-        SyntaxKind.Identifier,
-        SyntaxKind.ReturnStatement,
-        SyntaxKind.ArrowFunction,
-      ])
+    const errorNodes = this.diagnosticUtil.filterNodesFromDiagnostics(
+      diagnostics,
+      this.diagnosticCodes,
+      this.nodeKinds
     );
 
     // Iterate through each node in reverse traversal order to prevent interference
