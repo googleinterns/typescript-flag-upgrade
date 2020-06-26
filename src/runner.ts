@@ -15,6 +15,7 @@
 */
 
 import path from 'path';
+import _ from 'lodash';
 import {Project} from 'ts-morph';
 import {ArgumentOptions} from './types';
 import {Emitter} from './emitters/emitter';
@@ -69,6 +70,7 @@ export class Runner {
     );
 
     let errors = this.parser.parse();
+    let prevErrors = errors;
     let errorsExist;
 
     do {
@@ -79,11 +81,12 @@ export class Runner {
         ) {
           manipulator.fixErrors(errors);
           errorsExist = true;
+          prevErrors = errors;
           errors = this.parser.parse();
           break;
         }
       }
-    } while (errorsExist);
+    } while (errorsExist && !_.isEqual(errors, prevErrors));
 
     this.emitter.emit();
   }
