@@ -33,7 +33,10 @@ export type ArgumentOptions = {
   $0: string;
 };
 
-export type NodeDiagnosticList = [Node<ts.Node>, Diagnostic<ts.Diagnostic>][];
+export type NodeDiagnostic = {
+  node: Node<ts.Node>;
+  diagnostic: Diagnostic<ts.Diagnostic>;
+};
 
 export enum DiagnosticCodes {
   CodePathNoReturn = 7030,

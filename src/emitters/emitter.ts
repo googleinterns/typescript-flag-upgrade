@@ -22,7 +22,7 @@ export abstract class Emitter {
 
   /**
    * Sets project to be emitted.
-   * @param {Project} project - ts-morph project to be emitted
+   * @param {Project} project - ts-morph project to be emitted.
    */
   constructor(project: Project) {
     this.project = project;

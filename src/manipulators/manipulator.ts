@@ -14,34 +14,36 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
-import {DiagnosticUtil} from '../diagnostic_util';
+import {Diagnostic, ts} from 'ts-morph';
+import {ErrorDetector} from '../error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
 export abstract class Manipulator {
-  diagnosticUtil: DiagnosticUtil;
+  errorDetector: ErrorDetector;
   diagnosticCodes: Set<number>;
-  nodeKinds: Set<SyntaxKind>;
 
   /**
    * Sets relevant error codes and node kinds for specific flags.
-   * @param {DiagnosticUtil} diagnosticUtil - Util class for filtering diagnostics
-   * @param {Set<number>} diagnosticCodes - Codes of compiler flag errors
-   * @param {Set<SyntaxKind>} nodeKinds - Types of nodes that the compiler flag errors on
+   * @param {ErrorDetector} errorDetector - Util class for filtering diagnostics.
+   * @param {Set<number>} diagnosticCodes - Codes of compiler flag errors.
    */
-  constructor(
-    diagnosticUtil: DiagnosticUtil,
-    diagnosticCodes: Set<number>,
-    nodeKinds: Set<SyntaxKind>
-  ) {
-    this.diagnosticUtil = diagnosticUtil;
+  constructor(errorDetector: ErrorDetector, diagnosticCodes: Set<number>) {
+    this.errorDetector = errorDetector;
     this.diagnosticCodes = diagnosticCodes;
-    this.nodeKinds = nodeKinds;
   }
 
   /**
    * Manipulates AST of project to fix for a specific flag given diagnostics.
-   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
    */
   abstract fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void;
+
+  /**
+   * Manipulates AST of project to fix for a specific flag given diagnostics.
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
+   * @return {boolean} True if diagnostics contain error codes for the flag.
+   */
+  hasErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): boolean {
+    return this.errorDetector.detectErrors(diagnostics, this.diagnosticCodes);
+  }
 }

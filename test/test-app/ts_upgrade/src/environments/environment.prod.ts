@@ -1,4 +1,4 @@
-/*
+/* 
     Copyright 2020 Google LLC
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +14,6 @@
     limitations under the License.
 */
 
-import {Emitter} from './emitter';
-import {Project} from 'ts-morph';
-
-/**
- * In-place emitter that modifies input files.
- * @extends {Emitter}
- */
-export class InPlaceEmitter extends Emitter {
-  constructor(project: Project) {
-    super(project);
-  }
-
-  /**
-   * Overwrites original input source files.
-   */
-  emit(): void {
-    this.project.saveSync();
-  }
-}
+export const environment = {
+  production: true
+};

@@ -14,22 +14,16 @@
     limitations under the License.
 */
 
-import {Emitter} from './emitter';
-import {Project} from 'ts-morph';
+import { NgModule } from '@angular/core';
+import { Routes, RouterModule } from '@angular/router';
+
+const routes: Routes = [];
 
 /**
- * In-place emitter that modifies input files.
- * @extends {Emitter}
+ * Module for handling routing, currently empty
  */
-export class InPlaceEmitter extends Emitter {
-  constructor(project: Project) {
-    super(project);
-  }
-
-  /**
-   * Overwrites original input source files.
-   */
-  emit(): void {
-    this.project.saveSync();
-  }
-}
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule {}

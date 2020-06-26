@@ -14,22 +14,16 @@
     limitations under the License.
 */
 
-import {Emitter} from './emitter';
-import {Project} from 'ts-morph';
+import { enableProdMode } from '@angular/core';
+import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 
-/**
- * In-place emitter that modifies input files.
- * @extends {Emitter}
- */
-export class InPlaceEmitter extends Emitter {
-  constructor(project: Project) {
-    super(project);
-  }
+import { AppModule } from './app/app_component';
+import { environment } from './environments/environment';
 
-  /**
-   * Overwrites original input source files.
-   */
-  emit(): void {
-    this.project.saveSync();
-  }
+if (environment.production) {
+  enableProdMode();
 }
+
+platformBrowserDynamic()
+  .bootstrapModule(AppModule)
+  .catch((err) => console.error(err));

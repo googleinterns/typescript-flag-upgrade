@@ -15,18 +15,21 @@
 */
 
 import {Diagnostic, ts, SyntaxKind, SourceFile} from 'ts-morph';
-import {NodeDiagnosticList} from './types';
+import {NodeDiagnostic} from '../types';
+import {ErrorDetector} from './error_detector';
 
 /**
- * Util class for filtering diagnostics.
+ * Util class for filtering diagnostics, used in prod.
+ * @extends {ErrorDetector}
  */
-export class DiagnosticUtil {
+export class ProdErrorDetector extends ErrorDetector {
   /**
    * Filters a list of diagnostics for errors relevant to specific flag.
-   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
-   * @return {Diagnostic<ts.Diagnostic>[]} List of diagnostics with relevant error codes
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
+   * @param {Set<number>} diagnosticCodes - List of codes to filter for.
+   * @return {Diagnostic<ts.Diagnostic>[]} List of filtered diagnostics with error codes.
    */
-  filterDiagnostics(
+  filterDiagnosticsByCode(
     diagnostics: Diagnostic<ts.Diagnostic>[],
     diagnosticCodes: Set<number>
   ): Diagnostic<ts.Diagnostic>[] {
@@ -37,31 +40,27 @@ export class DiagnosticUtil {
 
   /**
    * Checks if a list of diagnostics contains relevant codes.
-   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
-   * @return {boolean} true if diagnostics contain relevant codes
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
+   * @param {Set<number>} diagnosticCodes - List of relevant codes.
+   * @return {boolean} True if diagnostics contain relevant codes.
    */
   detectErrors(
     diagnostics: Diagnostic<ts.Diagnostic>[],
     diagnosticCodes: Set<number>
   ): boolean {
-    return this.filterDiagnostics(diagnostics, diagnosticCodes).length !== 0;
+    return (
+      this.filterDiagnosticsByCode(diagnostics, diagnosticCodes).length !== 0
+    );
   }
 
   /**
    * Retrieves the list of nodes corresponding to a list of diagnostics.
-   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics
-   * @param {Set<number>} diagnosticCodes - Set of relevant codes to filter diagnostics for
-   * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for
-   * @return {NodeDiagnosticList} List of corresponding [node, diagnostic] tuples
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
+   * @return {NodeDiagnostic[]} List of corresponding node-diagnostic pairs.
    */
-  filterNodesFromDiagnostics(
-    diagnostics: Diagnostic<ts.Diagnostic>[],
-    diagnosticCodes: Set<number>,
-    nodeKinds: Set<SyntaxKind>
-  ): NodeDiagnosticList {
-    // Remove all irrelevant diagnostics that don't contain the error codes
-    diagnostics = this.filterDiagnostics(diagnostics, diagnosticCodes);
-
+  getNodesFromDiagnostics(
+    diagnostics: Diagnostic<ts.Diagnostic>[]
+  ): NodeDiagnostic[] {
     // Construct map of source file to list of contained diagnostics
     const sourceFileToDiagnostics = new Map<
       SourceFile,
@@ -80,19 +79,32 @@ export class DiagnosticUtil {
     });
 
     // Traverse each source file AST, constructing list of matching nodes to diagnostics
-    const errorNodes: NodeDiagnosticList = [];
+    const errorNodes: NodeDiagnostic[] = [];
 
     for (const sourceFile of sourceFileToDiagnostics.keys()) {
       sourceFile.forEachDescendant(node => {
-        if (nodeKinds.has(node.getKind())) {
-          sourceFileToDiagnostics.get(sourceFile)!.forEach(diagnostic => {
-            if (diagnostic.getStart() === node.getStart()) {
-              errorNodes.push([node, diagnostic]);
-            }
-          });
-        }
+        sourceFileToDiagnostics.get(sourceFile)!.forEach(diagnostic => {
+          if (diagnostic.getStart() === node.getStart()) {
+            errorNodes.push({node, diagnostic});
+          }
+        });
       });
     }
     return errorNodes;
+  }
+
+  /**
+   * Filters node-diagnostic pairs for a set of node kinds.
+   * @param {NodeDiagnostic[]} nodeDiagnostics - List of node-diagnostic pairs.
+   * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for.
+   * @return {NodeDiagnostic[]} List of filtered node-diagnostic pairs with relevant node kinds.
+   */
+  filterNodeDiagnosticsByKind(
+    nodeDiagnostics: NodeDiagnostic[],
+    nodeKinds: Set<SyntaxKind>
+  ): NodeDiagnostic[] {
+    return nodeDiagnostics.filter(({node}) => {
+      return nodeKinds.has(node.getKind());
+    });
   }
 }

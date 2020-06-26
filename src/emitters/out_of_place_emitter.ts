@@ -18,14 +18,17 @@ import path from 'path';
 import {Emitter} from './emitter';
 import {Project} from 'ts-morph';
 
-/** Out-of-place emitter that emits to a dist directory. */
+/**
+ * Out-of-place emitter that emits to a dist directory.
+ * @extends {Emitter}
+ */
 export class OutOfPlaceEmitter extends Emitter {
   private outputPath: string;
 
   /**
    * Sets project and output path to be emitted to.
-   * @param {Project} project - ts-morph project to be emitted
-   * @param {string} project - Relative path to output directory
+   * @param {Project} project - ts-morph project to be emitted.
+   * @param {string} outputPath - Relative path to output directory.
    */
   constructor(project: Project, outputPath = './ts_upgrade') {
     super(project);
@@ -33,7 +36,7 @@ export class OutOfPlaceEmitter extends Emitter {
   }
 
   /**
-   * Creates dist directory and copies modified source files to it.
+   * Creates output directory and copies modified source files to it.
    */
   emit(): void {
     const srcDirs = this.project.getRootDirectories();

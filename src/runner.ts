@@ -26,7 +26,8 @@ import {StrictPropertyInitializationManipulator} from './manipulators/strict_pro
 import {Parser} from './parser';
 import {Manipulator} from './manipulators/manipulator';
 import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
-import {DiagnosticUtil} from './diagnostic_util';
+import {ErrorDetector} from './error_detectors/error_detector';
+import {ProdErrorDetector} from './error_detectors/prod_error_detector';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
@@ -36,24 +37,24 @@ export class Runner {
   private parser: Parser;
   private emitter: Emitter;
 
-  private diagnosticUtil: DiagnosticUtil;
+  private errorDetector: ErrorDetector;
 
   private manipulators: Manipulator[];
 
   /**
    * Instantiates project and appropriate modules.
-   * @param {ArgumentOptions} args - Arguments passed
+   * @param {ArgumentOptions} args - Arguments passed.
    */
   constructor(args: ArgumentOptions) {
     this.args = args;
     this.project = this.createProject();
     this.parser = new Parser(this.project);
-    this.diagnosticUtil = new DiagnosticUtil();
+    this.errorDetector = new ProdErrorDetector();
     this.manipulators = [
-      new NoImplicitReturnsManipulator(this.diagnosticUtil),
-      new NoImplicitAnyManipulator(this.diagnosticUtil),
-      new StrictPropertyInitializationManipulator(this.diagnosticUtil),
-      new StrictNullChecksManipulator(this.diagnosticUtil),
+      new NoImplicitReturnsManipulator(this.errorDetector),
+      new NoImplicitAnyManipulator(this.errorDetector),
+      new StrictPropertyInitializationManipulator(this.errorDetector),
+      new StrictNullChecksManipulator(this.errorDetector),
     ];
     this.emitter = new OutOfPlaceEmitter(this.project);
   }
@@ -76,9 +77,7 @@ export class Runner {
     do {
       errorsExist = false;
       for (const manipulator of this.manipulators) {
-        if (
-          this.diagnosticUtil.detectErrors(errors, manipulator.diagnosticCodes)
-        ) {
+        if (manipulator.hasErrors(errors)) {
           manipulator.fixErrors(errors);
           errorsExist = true;
           prevErrors = errors;
@@ -93,7 +92,7 @@ export class Runner {
 
   /**
    * Creates a ts-morph project from filepath.
-   * @return {Project} Created project
+   * @return {Project} Created project.
    */
   private createProject(): Project {
     if (this.args.i) {
