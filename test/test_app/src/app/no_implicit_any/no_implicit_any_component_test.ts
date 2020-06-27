@@ -14,10 +14,10 @@
     limitations under the License.
 */
 
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import {async, ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { NoImplicitAnyComponent } from './no_implicit_any_component';
-import { BasicClass } from '../util/basic_class';
+import {NoImplicitAnyComponent} from './no_implicit_any_component';
+import {BasicClass} from '../util/basic_class';
 
 describe('TestNoImplicitAnyComponent', () => {
   // Test: noImplicitAny in Angular test file

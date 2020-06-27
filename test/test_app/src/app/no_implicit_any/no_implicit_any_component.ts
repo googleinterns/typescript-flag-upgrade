@@ -14,9 +14,9 @@
     limitations under the License.
 */
 
-import { Component, OnInit } from '@angular/core';
-import { BasicClass } from '../util/basic_class';
-import { BasicInterface } from '../util/basic_interface';
+import {Component, OnInit} from '@angular/core';
+import {BasicClass} from '../util/basic_class';
+import {BasicInterface} from '../util/basic_interface';
 
 /**
  * Component with anti-patterns to test noImplicitAny flag
@@ -123,7 +123,7 @@ export class NoImplicitAnyComponent implements OnInit {
   // Test: Accessing a non-empty object
   accessNonEmptyObjectProperty() {
     // Fix: const nonEmptyObject: any = { already: false };
-    const nonEmptyObject = { already: false };
+    const nonEmptyObject = {already: false};
     nonEmptyObject['property'] = true;
   }
 

@@ -14,8 +14,8 @@
     limitations under the License.
 */
 
-import { Component, OnInit } from '@angular/core';
-import { BasicInterface } from '../util/basic_interface';
+import {Component, OnInit} from '@angular/core';
+import {BasicInterface} from '../util/basic_interface';
 
 /**
  * Component with anti-patterns to test strictPropertyInitialization flag

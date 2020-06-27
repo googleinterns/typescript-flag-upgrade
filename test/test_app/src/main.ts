@@ -14,16 +14,16 @@
     limitations under the License.
 */
 
-import { NgModule } from '@angular/core';
-import { Routes, RouterModule } from '@angular/router';
+import {enableProdMode} from '@angular/core';
+import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
 
-const routes: Routes = [];
+import {AppModule} from './app/app_component';
+import {environment} from './environments/environment';
 
-/**
- * Module for handling routing, currently empty
- */
-@NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}
+if (environment.production) {
+  enableProdMode();
+}
+
+platformBrowserDynamic()
+  .bootstrapModule(AppModule)
+  .catch(err => console.error(err));

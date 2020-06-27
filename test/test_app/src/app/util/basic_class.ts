@@ -1,4 +1,4 @@
-import { BasicInterface } from './basic_interface';
+import {BasicInterface} from './basic_interface';
 
 /**
  * Simple class used for testing

@@ -14,11 +14,11 @@
     limitations under the License.
 */
 
-import { Component, OnInit } from '@angular/core';
-import { BasicInterface } from '../util/basic_interface';
-import { BasicClass } from '../util/basic_class';
-import { pipe } from 'rxjs';
-import { map, filter } from 'rxjs/operators';
+import {Component, OnInit} from '@angular/core';
+import {BasicInterface} from '../util/basic_interface';
+import {BasicClass} from '../util/basic_class';
+import {pipe} from 'rxjs';
+import {map, filter} from 'rxjs/operators';
 
 /**
  * Component with anti-patterns to test strictNullChecks flag
