@@ -16,7 +16,7 @@
 
 import {Manipulator} from './manipulator';
 import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
-import {ErrorDetector} from '../error_detectors/error_detector';
+import {ErrorDetector} from 'error_detectors/error_detector';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.

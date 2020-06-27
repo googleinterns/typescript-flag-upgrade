@@ -9,8 +9,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node src/index.ts",
-    "experimental": "ts-node experimental/index.ts",
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "experimental": "ts-node -r tsconfig-paths/register experimental/index.ts",
     "check": "gts check",
     "clean": "gts clean",
     "compile": "tsc",
@@ -48,6 +48,7 @@
     "gts": "^2.0.2",
     "jasmine": "^3.5.0",
     "ts-node": "^8.10.2",
+    "tsconfig-paths": "^3.9.0",
     "typescript": "^3.9.5"
   }
 }

@@ -15,7 +15,7 @@
 */
 
 import {Diagnostic, ts, SyntaxKind, SourceFile} from 'ts-morph';
-import {NodeDiagnostic} from '../types';
+import {NodeDiagnostic} from 'types';
 import {ErrorDetector} from './error_detector';
 
 /**

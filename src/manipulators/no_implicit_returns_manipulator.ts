@@ -17,8 +17,8 @@
 import _ from 'lodash';
 import {Diagnostic, ts, Node, SyntaxKind} from 'ts-morph';
 import {Manipulator} from './manipulator';
-import {DiagnosticCodes} from '../types';
-import {ErrorDetector} from '../error_detectors/error_detector';
+import {DiagnosticCodes} from 'types';
+import {ErrorDetector} from 'error_detectors/error_detector';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
