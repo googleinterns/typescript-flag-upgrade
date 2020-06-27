@@ -14,10 +14,9 @@
     limitations under the License.
 */
 
-import _ from 'lodash';
-import {Diagnostic, ts, Node, SyntaxKind} from 'ts-morph';
+import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
 import {Manipulator} from './manipulator';
-import {DiagnosticCodes} from 'types';
+import {ErrorCodes} from 'types';
 import {ErrorDetector} from 'error_detectors/error_detector';
 
 /**
@@ -30,7 +29,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
   constructor(errorDetector: ErrorDetector) {
     super(
       errorDetector,
-      new Set<number>([DiagnosticCodes.CodePathNoReturn])
+      new Set<number>([ErrorCodes.CodePathNoReturn])
     );
     this.nodeKinds = new Set<SyntaxKind>([
       SyntaxKind.Identifier,
@@ -45,18 +44,18 @@ export class NoImplicitReturnsManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
-    const errorNodes = this.errorDetector.filterNodeDiagnosticsByKind(
+    const errorNodes = this.errorDetector.sortAndFilterDiagnosticsByKind(
       this.errorDetector.getNodesFromDiagnostics(
         this.errorDetector.filterDiagnosticsByCode(
           diagnostics,
-          this.diagnosticCodes
+          this.errorCodesToFix
         )
       ),
       this.nodeKinds
     );
 
     // Iterate through each node in reverse traversal order to prevent interference.
-    _.forEachRight(errorNodes, ({node: errorNode}) => {
+    errorNodes.forEach(({node: errorNode}) => {
       const parent = errorNode.getParent();
 
       switch (errorNode.getKind()) {
@@ -67,10 +66,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
             (Node.isFunctionDeclaration(parent) ||
               Node.isMethodDeclaration(parent))
           ) {
-            parent.addStatements(
-              '// typescript-flag-upgrade automated fix: --noImplicitReturns'
-            );
-            parent.addStatements('return undefined;');
+            this.addChildReturnStatement(parent);
           }
           break;
         }
@@ -80,10 +76,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           if (parent && Node.isBlock(parent)) {
             const index = errorNode.getChildIndex();
             parent.removeStatement(index);
-            parent.addStatements(
-              '// typescript-flag-upgrade automated fix: --noImplicitReturns'
-            );
-            parent.addStatements('return undefined;');
+            this.addChildReturnStatement(parent);
           }
           break;
         }
@@ -92,14 +85,18 @@ export class NoImplicitReturnsManipulator extends Manipulator {
         case SyntaxKind.ArrowFunction: {
           const child = errorNode.getLastChildByKind(SyntaxKind.Block);
           if (child) {
-            child.addStatements(
-              '// typescript-flag-upgrade automated fix: --noImplicitReturns'
-            );
-            child.addStatements('return undefined;');
+            this.addChildReturnStatement(child);
           }
           break;
         }
       }
     });
+  }
+
+  private addChildReturnStatement(node: StatementedNode): void {
+    node.addStatements(
+      '// typescript-flag-upgrade automated fix: --noImplicitReturns'
+    );
+    node.addStatements('return undefined;');
   }
 }

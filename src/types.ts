@@ -38,6 +38,6 @@ export type NodeDiagnostic = {
   diagnostic: Diagnostic<ts.Diagnostic>;
 };
 
-export enum DiagnosticCodes {
+export enum ErrorCodes {
   CodePathNoReturn = 7030,
 }

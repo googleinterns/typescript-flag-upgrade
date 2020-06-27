@@ -17,28 +17,28 @@
 import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
 import {NodeDiagnostic} from 'types';
 
-/** Base util class for filtering diagnostics. */
+/** Base class for filtering diagnostics. */
 export abstract class ErrorDetector {
   /**
    * Filters a list of diagnostics for errors relevant to specific flag.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
-   * @param {Set<number>} diagnosticCodes - List of codes to filter for.
+   * @param {Set<number>} errorCodes - List of codes to filter for.
    * @return {Diagnostic<ts.Diagnostic>[]} List of filtered diagnostics with error codes.
    */
   abstract filterDiagnosticsByCode(
     diagnostics: Diagnostic<ts.Diagnostic>[],
-    diagnosticCodes: Set<number>
+    errorCodes: Set<number>
   ): Diagnostic<ts.Diagnostic>[];
 
   /**
    * Checks if a list of diagnostics contains relevant codes.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
-   * @param {Set<number>} diagnosticCodes - List of relevant codes.
+   * @param {Set<number>} errorCodes - List of relevant codes.
    * @return {boolean} True if diagnostics contain relevant codes.
    */
   abstract detectErrors(
     diagnostics: Diagnostic<ts.Diagnostic>[],
-    diagnosticCodes: Set<number>
+    errorCodes: Set<number>
   ): boolean;
 
   /**
@@ -51,12 +51,12 @@ export abstract class ErrorDetector {
   ): NodeDiagnostic[];
 
   /**
-   * Filters node-diagnostic pairs for a set of node kinds.
+   * Filters node-diagnostic pairs for a set of node kinds and returns in order of lowest children to parent.
    * @param {NodeDiagnostic[]} nodeDiagnostics - List of node-diagnostic pairs.
    * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for.
    * @return {NodeDiagnostic[]} List of filtered node-diagnostic pairs with relevant node kinds.
    */
-  abstract filterNodeDiagnosticsByKind(
+  abstract sortAndFilterDiagnosticsByKind(
     nodeDiagnostics: NodeDiagnostic[],
     nodeKinds: Set<SyntaxKind>
   ): NodeDiagnostic[];

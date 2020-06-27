@@ -20,16 +20,16 @@ import {ErrorDetector} from 'error_detectors/error_detector';
 /** Base class for manipulating AST to fix for flags. */
 export abstract class Manipulator {
   errorDetector: ErrorDetector;
-  diagnosticCodes: Set<number>;
+  errorCodesToFix: Set<number>;
 
   /**
    * Sets relevant error codes and node kinds for specific flags.
    * @param {ErrorDetector} errorDetector - Util class for filtering diagnostics.
-   * @param {Set<number>} diagnosticCodes - Codes of compiler flag errors.
+   * @param {Set<number>} errorCodesToFix - Codes of compiler flag errors.
    */
-  constructor(errorDetector: ErrorDetector, diagnosticCodes: Set<number>) {
+  constructor(errorDetector: ErrorDetector, errorCodesToFix: Set<number>) {
     this.errorDetector = errorDetector;
-    this.diagnosticCodes = diagnosticCodes;
+    this.errorCodesToFix = errorCodesToFix;
   }
 
   /**
@@ -44,6 +44,6 @@ export abstract class Manipulator {
    * @return {boolean} True if diagnostics contain error codes for the flag.
    */
   hasErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): boolean {
-    return this.errorDetector.detectErrors(diagnostics, this.diagnosticCodes);
+    return this.errorDetector.detectErrors(diagnostics, this.errorCodesToFix);
   }
 }

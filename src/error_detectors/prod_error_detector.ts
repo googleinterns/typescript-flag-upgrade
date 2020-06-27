@@ -26,31 +26,29 @@ export class ProdErrorDetector extends ErrorDetector {
   /**
    * Filters a list of diagnostics for errors relevant to specific flag.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
-   * @param {Set<number>} diagnosticCodes - List of codes to filter for.
+   * @param {Set<number>} errorCodes - List of codes to filter for.
    * @return {Diagnostic<ts.Diagnostic>[]} List of filtered diagnostics with error codes.
    */
   filterDiagnosticsByCode(
     diagnostics: Diagnostic<ts.Diagnostic>[],
-    diagnosticCodes: Set<number>
+    errorCodes: Set<number>
   ): Diagnostic<ts.Diagnostic>[] {
     return diagnostics.filter(diagnostic => {
-      return diagnosticCodes.has(diagnostic.getCode());
+      return errorCodes.has(diagnostic.getCode());
     });
   }
 
   /**
    * Checks if a list of diagnostics contains relevant codes.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics.
-   * @param {Set<number>} diagnosticCodes - List of relevant codes.
+   * @param {Set<number>} errorCodes - List of relevant codes.
    * @return {boolean} True if diagnostics contain relevant codes.
    */
   detectErrors(
     diagnostics: Diagnostic<ts.Diagnostic>[],
-    diagnosticCodes: Set<number>
+    errorCodes: Set<number>
   ): boolean {
-    return (
-      this.filterDiagnosticsByCode(diagnostics, diagnosticCodes).length !== 0
-    );
+    return this.filterDiagnosticsByCode(diagnostics, errorCodes).length !== 0;
   }
 
   /**
@@ -94,17 +92,19 @@ export class ProdErrorDetector extends ErrorDetector {
   }
 
   /**
-   * Filters node-diagnostic pairs for a set of node kinds.
+   * Filters node-diagnostic pairs for a set of node kinds and returns in order of lowest children to parent.
    * @param {NodeDiagnostic[]} nodeDiagnostics - List of node-diagnostic pairs.
    * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for.
    * @return {NodeDiagnostic[]} List of filtered node-diagnostic pairs with relevant node kinds.
    */
-  filterNodeDiagnosticsByKind(
+  sortAndFilterDiagnosticsByKind(
     nodeDiagnostics: NodeDiagnostic[],
     nodeKinds: Set<SyntaxKind>
   ): NodeDiagnostic[] {
-    return nodeDiagnostics.filter(({node}) => {
-      return nodeKinds.has(node.getKind());
-    });
+    return nodeDiagnostics
+      .filter(({node}) => {
+        return nodeKinds.has(node.getKind());
+      })
+      .reverse();
   }
 }

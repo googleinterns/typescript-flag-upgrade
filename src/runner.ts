@@ -86,6 +86,7 @@ export class Runner {
         }
       }
     } while (errorsExist && !_.isEqual(errors, prevErrors));
+    // TODO: Log if previous errors are same as current errors.
 
     this.emitter.emit();
   }
