@@ -14,10 +14,10 @@
     limitations under the License.
 */
 
-import _ from 'lodash';
 import {Manipulator} from './manipulator';
 import {ErrorDetector} from 'error_detectors/error_detector';
 import {Diagnostic, ts, SyntaxKind, Node, StatementedNode} from 'ts-morph';
+import {ErrorCodes} from 'types';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.
@@ -27,8 +27,20 @@ export class StrictNullChecksManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
   constructor(errorDetector: ErrorDetector) {
-    super(errorDetector, new Set<number>([]));
-    this.nodeKinds = new Set<number>([2531, 2322]);
+    super(
+      errorDetector,
+      new Set<number>([
+        ErrorCodes.ObjectPossiblyNull,
+        ErrorCodes.ObjectPossiblyUndefined,
+        ErrorCodes.ObjectPossiblyNullOrUndefined,
+        ErrorCodes.TypeANotAssignableToTypeB,
+      ])
+    );
+    this.nodeKinds = new Set<SyntaxKind>([
+      SyntaxKind.Identifier,
+      SyntaxKind.PropertyAccessExpression,
+      SyntaxKind.CallExpression,
+    ]);
   }
 
   /**
@@ -37,24 +49,27 @@ export class StrictNullChecksManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
-    const errorNodes = this.filterNodesFromDiagnostics(
-      this.filterErrors(diagnostics),
-      new Set<SyntaxKind>([
-        SyntaxKind.Identifier,
-        SyntaxKind.PropertyAccessExpression,
-        SyntaxKind.CallExpression,
-      ])
+    const errorNodes = this.errorDetector.sortAndFilterDiagnosticsByKind(
+      this.errorDetector.getNodesFromDiagnostics(
+        this.errorDetector.filterDiagnosticsByCode(
+          diagnostics,
+          this.errorCodesToFix
+        )
+      ),
+      this.nodeKinds
     );
 
     const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
 
     // Iterate through each node in reverse traversal order to prevent interference
-    _.forEachRight(errorNodes, ([errorNode, diagnostic]) => {
+    errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
       const parent = errorNode.getParentOrThrow();
 
       switch (diagnostic.getCode()) {
         // When object is possibly null, add definite assignment assertion to identifier
-        case 2531: {
+        case ErrorCodes.ObjectPossiblyNull:
+        case ErrorCodes.ObjectPossiblyUndefined:
+        case ErrorCodes.ObjectPossiblyNullOrUndefined: {
           if (
             Node.isIdentifier(errorNode) &&
             Node.isPropertyAccessExpression(parent)
@@ -78,14 +93,25 @@ export class StrictNullChecksManipulator extends Manipulator {
           }
           break;
         }
-
-        //
-        // case 2322: {
-        //   console.log(errorNode.getText());
-        //   console.log(errorNode.getKindName());
-        //   console.log(errorNode.getType().getText());
-        //   break;
-        // }
+        case ErrorCodes.TypeANotAssignableToTypeB: {
+          if (Node.isIdentifier(errorNode)) {
+            console.log(errorNode.getStartLineNumber());
+            errorNode.getDefinitions().forEach(dec => {
+              console.log('--');
+              console.log(dec.getKind());
+              console.log(dec.getNode().getStartLineNumber());
+              console.log('--');
+              const decNode = dec.getDeclarationNode();
+              if (decNode && Node.isVariableDeclaration(decNode)) {
+                decNode.setType(errorNode.getType().getText() + ' | any');
+              }
+            });
+          }
+          // console.log(errorNode.getText());
+          // console.log(errorNode.getKindName());
+          // console.log(errorNode.getType().getText());
+          break;
+        }
       }
     });
 

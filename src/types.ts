@@ -40,4 +40,8 @@ export type NodeDiagnostic = {
 
 export enum ErrorCodes {
   CodePathNoReturn = 7030,
+  ObjectPossiblyNull = 2531,
+  ObjectPossiblyUndefined = 2532,
+  ObjectPossiblyNullOrUndefined = 2533,
+  TypeANotAssignableToTypeB = 2322,
 }
