@@ -16,7 +16,17 @@
 
 import {Manipulator} from './manipulator';
 import {ErrorDetector} from 'error_detectors/error_detector';
-import {Diagnostic, ts, SyntaxKind, Node, StatementedNode} from 'ts-morph';
+import {
+  Diagnostic,
+  ts,
+  SyntaxKind,
+  Node,
+  StatementedNode,
+  VariableDeclaration,
+  Type,
+  ParameterDeclaration,
+  PropertyDeclaration,
+} from 'ts-morph';
 import {ErrorCodes} from 'types';
 
 /**
@@ -59,6 +69,11 @@ export class StrictNullChecksManipulator extends Manipulator {
       this.nodeKinds
     );
 
+    const modifiedDeclarationTypes = new Map<
+      VariableDeclaration | ParameterDeclaration | PropertyDeclaration,
+      Set<Type>
+    >();
+
     const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
 
     // Iterate through each node in reverse traversal order to prevent interference
@@ -78,13 +93,7 @@ export class StrictNullChecksManipulator extends Manipulator {
               errorNode.getText() + '!'
             );
 
-            const modifiedStatement = newNode.getParentWhileOrThrow(
-              (parent, child) => {
-                return !(
-                  Node.isStatementedNode(parent) && Node.isStatement(child)
-                );
-              }
-            );
+            const modifiedStatement = this.getModifiedStatement(newNode);
 
             modifiedStatementedNodes.add([
               (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
@@ -94,25 +103,59 @@ export class StrictNullChecksManipulator extends Manipulator {
           break;
         }
         case ErrorCodes.TypeANotAssignableToTypeB: {
-          if (Node.isIdentifier(errorNode)) {
-            console.log(errorNode.getStartLineNumber());
-            errorNode.getDefinitions().forEach(dec => {
-              console.log('--');
-              console.log(dec.getKind());
-              console.log(dec.getNode().getStartLineNumber());
-              console.log('--');
-              const decNode = dec.getDeclarationNode();
-              if (decNode && Node.isVariableDeclaration(decNode)) {
-                decNode.setType(errorNode.getType().getText() + ' | any');
+          if (
+            Node.isIdentifier(errorNode) ||
+            Node.isPropertyAccessExpression(errorNode)
+          ) {
+            const errorSymbol = errorNode.getSymbolOrThrow();
+            const declarations = errorSymbol.getDeclarations();
+
+            const typesToAdd = this.determineAssignedType(errorNode);
+
+            declarations.forEach(declaration => {
+              if (
+                Node.isVariableDeclaration(declaration) ||
+                Node.isParameterDeclaration(declaration) ||
+                Node.isPropertyDeclaration(declaration)
+              ) {
+                const declarationType = this.toTypeList(declaration.getType());
+
+                if (modifiedDeclarationTypes.has(declaration)) {
+                  declarationType.forEach(type => {
+                    modifiedDeclarationTypes.get(declaration)?.add(type);
+                  });
+                } else {
+                  modifiedDeclarationTypes.set(
+                    declaration,
+                    new Set(declarationType)
+                  );
+                }
+
+                typesToAdd.forEach(type => {
+                  modifiedDeclarationTypes.get(declaration)?.add(type);
+                });
               }
             });
           }
-          // console.log(errorNode.getText());
-          // console.log(errorNode.getKindName());
-          // console.log(errorNode.getType().getText());
           break;
         }
       }
+    });
+
+    modifiedDeclarationTypes.forEach((types, declaration) => {
+      const newDeclaration = declaration.setType(
+        Array.from(types)
+          .map(type => {
+            return type.getText();
+          })
+          .join(' | ')
+      );
+
+      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      modifiedStatementedNodes.add([
+        (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
+        modifiedStatement.getChildIndex(),
+      ]);
     });
 
     modifiedStatementedNodes.forEach(
@@ -123,5 +166,34 @@ export class StrictNullChecksManipulator extends Manipulator {
         );
       }
     );
+  }
+
+  private determineAssignedType(node: Node<ts.Node>): Type[] {
+    let assignedTypes: Type[] = [];
+
+    const parent = node.getParentIfKind(SyntaxKind.BinaryExpression);
+    const sibling = node.getNextSiblingIfKind(SyntaxKind.EqualsToken);
+
+    if (sibling && parent) {
+      assignedTypes = this.toTypeList(
+        sibling.getNextSiblingOrThrow().getType()
+      );
+    }
+
+    return assignedTypes;
+  }
+
+  private toTypeList(type: Type): Type[] {
+    return type.isUnion()
+      ? type.getUnionTypes().map(individualType => {
+          return individualType.getBaseTypeOfLiteralType();
+        })
+      : [type.getBaseTypeOfLiteralType()];
+  }
+
+  private getModifiedStatement(node: Node<ts.Node>) {
+    return node.getParentWhileOrThrow((parent, child) => {
+      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
+    });
   }
 }
