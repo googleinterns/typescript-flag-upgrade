@@ -44,7 +44,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
-    const errorNodes = this.errorDetector.sortAndFilterDiagnosticsByKind(
+    const errorNodes = this.errorDetector.filterDiagnosticsByKind(
       this.errorDetector.getNodesFromDiagnostics(
         this.errorDetector.filterDiagnosticsByCode(
           diagnostics,

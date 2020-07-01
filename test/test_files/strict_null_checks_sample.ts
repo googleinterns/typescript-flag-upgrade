@@ -82,7 +82,7 @@ function turnsIntoNull(n: number) {
 // Test: Assign non-null to null variable
 function assignNonNullValueToNullVar() {
   // Fix: let n: null | number = null;
-  let n: number;
+  let n: null = null;
   n = returnsNumber();
 }
 

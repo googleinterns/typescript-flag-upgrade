@@ -44,6 +44,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         ErrorCodes.ObjectPossiblyUndefined,
         ErrorCodes.ObjectPossiblyNullOrUndefined,
         ErrorCodes.TypeANotAssignableToTypeB,
+        ErrorCodes.ArgumentNotAssignableToParameter,
       ])
     );
     this.nodeKinds = new Set<SyntaxKind>([
@@ -59,14 +60,11 @@ export class StrictNullChecksManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
-    const errorNodes = this.errorDetector.sortAndFilterDiagnosticsByKind(
-      this.errorDetector.getNodesFromDiagnostics(
-        this.errorDetector.filterDiagnosticsByCode(
-          diagnostics,
-          this.errorCodesToFix
-        )
-      ),
-      this.nodeKinds
+    const errorNodes = this.errorDetector.getNodesFromDiagnostics(
+      this.errorDetector.filterDiagnosticsByCode(
+        diagnostics,
+        this.errorCodesToFix
+      )
     );
 
     const modifiedDeclarationTypes = new Map<
@@ -85,6 +83,10 @@ export class StrictNullChecksManipulator extends Manipulator {
         case ErrorCodes.ObjectPossiblyNull:
         case ErrorCodes.ObjectPossiblyUndefined:
         case ErrorCodes.ObjectPossiblyNullOrUndefined: {
+          if (!this.nodeKinds.has(errorNode.getKind())) {
+            return;
+          }
+
           if (
             Node.isIdentifier(errorNode) &&
             Node.isPropertyAccessExpression(parent)
@@ -102,7 +104,12 @@ export class StrictNullChecksManipulator extends Manipulator {
           }
           break;
         }
+
         case ErrorCodes.TypeANotAssignableToTypeB: {
+          if (!this.nodeKinds.has(errorNode.getKind())) {
+            return;
+          }
+
           if (
             Node.isIdentifier(errorNode) ||
             Node.isPropertyAccessExpression(errorNode)
@@ -137,6 +144,23 @@ export class StrictNullChecksManipulator extends Manipulator {
               }
             });
           }
+          break;
+        }
+
+        case ErrorCodes.ArgumentNotAssignableToParameter: {
+          if (diagnostic.getLength() !== errorNode.getText().length) {
+            return;
+          }
+
+          const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
+
+          const modifiedStatement = this.getModifiedStatement(newNode);
+
+          modifiedStatementedNodes.add([
+            (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
+            modifiedStatement.getChildIndex(),
+          ]);
+
           break;
         }
       }

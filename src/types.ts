@@ -44,4 +44,5 @@ export enum ErrorCodes {
   ObjectPossiblyUndefined = 2532,
   ObjectPossiblyNullOrUndefined = 2533,
   TypeANotAssignableToTypeB = 2322,
+  ArgumentNotAssignableToParameter = 2345,
 }

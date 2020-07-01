@@ -51,12 +51,12 @@ export abstract class ErrorDetector {
   ): NodeDiagnostic[];
 
   /**
-   * Filters node-diagnostic pairs for a set of node kinds and returns in order of lowest children to parent.
+   * Filters node-diagnostic pairs for a set of node kinds.
    * @param {NodeDiagnostic[]} nodeDiagnostics - List of node-diagnostic pairs.
    * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for.
    * @return {NodeDiagnostic[]} List of filtered node-diagnostic pairs with relevant node kinds.
    */
-  abstract sortAndFilterDiagnosticsByKind(
+  abstract filterDiagnosticsByKind(
     nodeDiagnostics: NodeDiagnostic[],
     nodeKinds: Set<SyntaxKind>
   ): NodeDiagnostic[];

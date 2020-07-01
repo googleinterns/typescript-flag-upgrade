@@ -88,23 +88,21 @@ export class ProdErrorDetector extends ErrorDetector {
         });
       });
     }
-    return errorNodes;
+    return errorNodes.reverse();
   }
 
   /**
-   * Filters node-diagnostic pairs for a set of node kinds and returns in order of lowest children to parent.
+   * Filters node-diagnostic pairs for a set of node kinds.
    * @param {NodeDiagnostic[]} nodeDiagnostics - List of node-diagnostic pairs.
    * @param {Set<SyntaxKind>} nodeKinds - Set of node kinds to filter nodes for.
    * @return {NodeDiagnostic[]} List of filtered node-diagnostic pairs with relevant node kinds.
    */
-  sortAndFilterDiagnosticsByKind(
+  filterDiagnosticsByKind(
     nodeDiagnostics: NodeDiagnostic[],
     nodeKinds: Set<SyntaxKind>
   ): NodeDiagnostic[] {
-    return nodeDiagnostics
-      .filter(({node}) => {
-        return nodeKinds.has(node.getKind());
-      })
-      .reverse();
+    return nodeDiagnostics.filter(({node}) => {
+      return nodeKinds.has(node.getKind());
+    });
   }
 }
