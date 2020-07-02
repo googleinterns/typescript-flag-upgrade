@@ -51,6 +51,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       SyntaxKind.Identifier,
       SyntaxKind.PropertyAccessExpression,
       SyntaxKind.CallExpression,
+      SyntaxKind.ReturnStatement,
     ]);
   }
 
@@ -67,11 +68,13 @@ export class StrictNullChecksManipulator extends Manipulator {
       )
     );
 
+    // Initialize map of declarations to their types
     const modifiedDeclarationTypes = new Map<
       VariableDeclaration | ParameterDeclaration | PropertyDeclaration,
-      Set<Type>
+      Set<Type | string>
     >();
 
+    // Keep track of modified statements to insert comments
     const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
 
     // Iterate through each node in reverse traversal order to prevent interference
@@ -105,6 +108,8 @@ export class StrictNullChecksManipulator extends Manipulator {
           break;
         }
 
+        // When two types are not assignable to each other, add both types to the declaration (variable,
+        // parameter, or property declaration)
         case ErrorCodes.TypeANotAssignableToTypeB: {
           if (!this.nodeKinds.has(errorNode.getKind())) {
             return;
@@ -117,8 +122,10 @@ export class StrictNullChecksManipulator extends Manipulator {
             const errorSymbol = errorNode.getSymbolOrThrow();
             const declarations = errorSymbol.getDeclarations();
 
+            // Determine the type that was assigned to the variable/parameter/property
             const typesToAdd = this.determineAssignedType(errorNode);
 
+            // For each declaration, add the union of all declared and assigned types to modifiedDeclarationTypes
             declarations.forEach(declaration => {
               if (
                 Node.isVariableDeclaration(declaration) ||
@@ -143,34 +150,91 @@ export class StrictNullChecksManipulator extends Manipulator {
                 });
               }
             });
+
+            // If error node is a return statement, add definite assignment assertion to return value
+          } else if (Node.isReturnStatement(errorNode)) {
+            if (
+              errorNode.getChildCount() === 1 ||
+              (errorNode.getChildCount() === 2 &&
+                errorNode.getLastChildOrThrow().getKind() ===
+                  SyntaxKind.SemicolonToken)
+            ) {
+              errorNode = errorNode.replaceWithText('return undefined!;');
+            } else {
+              errorNode = errorNode.replaceWithText(
+                'return (' + errorNode.getChildAtIndex(1).getText() + ')!;'
+              );
+            }
+
+            modifiedStatementedNodes.add([
+              (errorNode.getParentOrThrow() as unknown) as StatementedNode,
+              errorNode.getChildIndex(),
+            ]);
           }
           break;
         }
 
+        // When argument and parameter types are not assignable to each other
         case ErrorCodes.ArgumentNotAssignableToParameter: {
           if (diagnostic.getLength() !== errorNode.getText().length) {
             return;
           }
 
-          const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
+          const childFunc =
+            errorNode.getFirstChildByKind(SyntaxKind.FunctionDeclaration) ||
+            errorNode.getFirstChildByKind(SyntaxKind.ArrowFunction);
 
-          const modifiedStatement = this.getModifiedStatement(newNode);
+          // If argument is a function, add null and undefined types to parameter declaration
+          if (Node.isCallExpression(errorNode) && childFunc) {
+            const parameterDeclaration = childFunc.getFirstChildByKindOrThrow(
+              SyntaxKind.Parameter
+            );
 
-          modifiedStatementedNodes.add([
-            (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
-            modifiedStatement.getChildIndex(),
-          ]);
+            const declarationType = this.toTypeList(
+              parameterDeclaration.getType()
+            );
+
+            if (modifiedDeclarationTypes.has(parameterDeclaration)) {
+              declarationType.forEach(type => {
+                modifiedDeclarationTypes.get(parameterDeclaration)?.add(type);
+              });
+            } else {
+              modifiedDeclarationTypes.set(
+                parameterDeclaration,
+                new Set(declarationType)
+              );
+            }
+
+            modifiedDeclarationTypes
+              .get(parameterDeclaration)
+              ?.add('undefined');
+            modifiedDeclarationTypes.get(parameterDeclaration)?.add('null');
+
+            // Otherwise, add definite assignment assertion to the argument being passed
+          } else {
+            const newNode = errorNode.replaceWithText(
+              errorNode.getText() + '!'
+            );
+
+            const modifiedStatement = this.getModifiedStatement(newNode);
+
+            modifiedStatementedNodes.add([
+              (modifiedStatement.getParentOrThrow() as unknown) as StatementedNode,
+              modifiedStatement.getChildIndex(),
+            ]);
+          }
 
           break;
         }
       }
     });
 
+    // Expand all declarations to include the calculated set of types
     modifiedDeclarationTypes.forEach((types, declaration) => {
       const newDeclaration = declaration.setType(
         Array.from(types)
           .map(type => {
-            return type.getText();
+            return type instanceof Type ? type.getText() : type;
           })
           .join(' | ')
       );
@@ -182,6 +246,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       ]);
     });
 
+    // Insert comment before each modified statement
     modifiedStatementedNodes.forEach(
       ([modifiedStatementedNode, indexToInsert]) => {
         modifiedStatementedNode.insertStatements(
@@ -192,6 +257,12 @@ export class StrictNullChecksManipulator extends Manipulator {
     );
   }
 
+  /**
+   * Determines the list of types that a variable, parameter, or property was assigned.
+   *
+   * @param {Node<ts.Node>} node - Identifier node for variable, parameter, or property.
+   * @return {Type[]} List of types assigned to input variable, parameter, or property.
+   */
   private determineAssignedType(node: Node<ts.Node>): Type[] {
     let assignedTypes: Type[] = [];
 
@@ -207,6 +278,12 @@ export class StrictNullChecksManipulator extends Manipulator {
     return assignedTypes;
   }
 
+  /**
+   * Converts a Union type into a list of base types, if applicable.
+   *
+   * @param {Type} type - Input type.
+   * @return {Type[]} List of types represented by input type.
+   */
   private toTypeList(type: Type): Type[] {
     return type.isUnion()
       ? type.getUnionTypes().map(individualType => {
@@ -215,7 +292,13 @@ export class StrictNullChecksManipulator extends Manipulator {
       : [type.getBaseTypeOfLiteralType()];
   }
 
-  private getModifiedStatement(node: Node<ts.Node>) {
+  /**
+   * Traverses through a node's ancestor and returns the closest Statement node.
+   *
+   * @param {Node<ts.Node>} node - Modified node.
+   * @return {Node<ts.Node>} Closest Statement ancestor of modified node.
+   */
+  private getModifiedStatement(node: Node<ts.Node>): Node<ts.Node> {
     return node.getParentWhileOrThrow((parent, child) => {
       return !(Node.isStatementedNode(parent) && Node.isStatement(child));
     });

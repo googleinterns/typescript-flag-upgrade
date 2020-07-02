@@ -74,12 +74,6 @@ export class Runner {
     let prevErrors = errors;
     let errorsExist;
 
-    // errors.forEach(error => {
-    //   if (error.getCode() === 2322) {
-    //     console.log(error.getSource());
-    //   }
-    // });
-
     do {
       errorsExist = false;
       for (const manipulator of this.manipulators) {
