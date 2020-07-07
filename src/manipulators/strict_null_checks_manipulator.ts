@@ -79,8 +79,6 @@ export class StrictNullChecksManipulator extends Manipulator {
 
     // Iterate through each node in reverse traversal order to prevent interference
     errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
-      const parent = errorNode.getParentOrThrow();
-
       switch (diagnostic.getCode()) {
         // When object is possibly null, add definite assignment assertion to identifier
         case ErrorCodes.ObjectPossiblyNull:
@@ -91,8 +89,9 @@ export class StrictNullChecksManipulator extends Manipulator {
           }
 
           if (
-            Node.isIdentifier(errorNode) &&
-            Node.isPropertyAccessExpression(parent)
+            (Node.isIdentifier(errorNode) ||
+              Node.isPropertyAccessExpression(errorNode)) &&
+            diagnostic.getLength() === errorNode.getText().length
           ) {
             const newNode = errorNode.replaceWithText(
               errorNode.getText() + '!'
@@ -116,8 +115,9 @@ export class StrictNullChecksManipulator extends Manipulator {
           }
 
           if (
-            Node.isIdentifier(errorNode) ||
-            Node.isPropertyAccessExpression(errorNode)
+            (Node.isIdentifier(errorNode) ||
+              Node.isPropertyAccessExpression(errorNode)) &&
+            diagnostic.getLength() === errorNode.getText().length
           ) {
             const errorSymbol = errorNode.getSymbolOrThrow();
             const declarations = errorSymbol.getDeclarations();
@@ -160,16 +160,23 @@ export class StrictNullChecksManipulator extends Manipulator {
                   SyntaxKind.SemicolonToken)
             ) {
               errorNode = errorNode.replaceWithText('return undefined!;');
-            } else {
+
+              modifiedStatementedNodes.add([
+                (errorNode.getParentOrThrow() as unknown) as StatementedNode,
+                errorNode.getChildIndex(),
+              ]);
+            } else if (
+              !Node.isNonNullExpression(errorNode.getChildAtIndex(1))
+            ) {
               errorNode = errorNode.replaceWithText(
                 'return (' + errorNode.getChildAtIndex(1).getText() + ')!;'
               );
-            }
 
-            modifiedStatementedNodes.add([
-              (errorNode.getParentOrThrow() as unknown) as StatementedNode,
-              errorNode.getChildIndex(),
-            ]);
+              modifiedStatementedNodes.add([
+                (errorNode.getParentOrThrow() as unknown) as StatementedNode,
+                errorNode.getChildIndex(),
+              ]);
+            }
           }
           break;
         }
@@ -211,7 +218,7 @@ export class StrictNullChecksManipulator extends Manipulator {
             modifiedDeclarationTypes.get(parameterDeclaration)?.add('null');
 
             // Otherwise, add definite assignment assertion to the argument being passed
-          } else {
+          } else if (!Node.isNonNullExpression(errorNode)) {
             const newNode = errorNode.replaceWithText(
               errorNode.getText() + '!'
             );
@@ -247,12 +254,21 @@ export class StrictNullChecksManipulator extends Manipulator {
     });
 
     // Insert comment before each modified statement
+    const comment =
+      '// typescript-flag-upgrade automated fix: --strictNullChecks';
+
     modifiedStatementedNodes.forEach(
       ([modifiedStatementedNode, indexToInsert]) => {
-        modifiedStatementedNode.insertStatements(
-          indexToInsert,
-          '// typescript-flag-upgrade automated fix: --strictNullChecks'
-        );
+        if (
+          !modifiedStatementedNode
+            .getStatementsWithComments()
+            [indexToInsert].getLeadingCommentRanges()
+            .some(commentRange => {
+              return commentRange.getText().includes(comment);
+            })
+        ) {
+          modifiedStatementedNode.insertStatements(indexToInsert, comment);
+        }
       }
     );
   }
