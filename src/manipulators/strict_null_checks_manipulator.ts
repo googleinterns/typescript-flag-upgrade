@@ -71,7 +71,7 @@ export class StrictNullChecksManipulator extends Manipulator {
     // Initialize map of declarations to their types
     const modifiedDeclarationTypes = new Map<
       VariableDeclaration | ParameterDeclaration | PropertyDeclaration,
-      Set<Type | string>
+      Set<string>
     >();
 
     // Keep track of modified statements to insert comments
@@ -137,17 +137,23 @@ export class StrictNullChecksManipulator extends Manipulator {
 
                 if (modifiedDeclarationTypes.has(declaration)) {
                   declarationType.forEach(type => {
-                    modifiedDeclarationTypes.get(declaration)?.add(type);
+                    modifiedDeclarationTypes
+                      .get(declaration)
+                      ?.add(type.getText(declaration));
                   });
                 } else {
                   modifiedDeclarationTypes.set(
                     declaration,
-                    new Set(declarationType)
+                    new Set(
+                      declarationType.map(type => type.getText(declaration))
+                    )
                   );
                 }
 
                 typesToAdd.forEach(type => {
-                  modifiedDeclarationTypes.get(declaration)?.add(type);
+                  modifiedDeclarationTypes
+                    .get(declaration)
+                    ?.add(type.getText(declaration));
                 });
               }
             });
@@ -204,12 +210,18 @@ export class StrictNullChecksManipulator extends Manipulator {
 
             if (modifiedDeclarationTypes.has(parameterDeclaration)) {
               declarationType.forEach(type => {
-                modifiedDeclarationTypes.get(parameterDeclaration)?.add(type);
+                modifiedDeclarationTypes
+                  .get(parameterDeclaration)
+                  ?.add(type.getText(parameterDeclaration));
               });
             } else {
               modifiedDeclarationTypes.set(
                 parameterDeclaration,
-                new Set(declarationType)
+                new Set(
+                  declarationType.map(type =>
+                    type.getText(parameterDeclaration)
+                  )
+                )
               );
             }
 
@@ -239,13 +251,21 @@ export class StrictNullChecksManipulator extends Manipulator {
 
     // Expand all declarations to include the calculated set of types
     modifiedDeclarationTypes.forEach((types, declaration) => {
-      const newDeclaration = declaration.setType(
-        Array.from(types)
-          .map(type => {
-            return type instanceof Type ? type.getText() : type;
-          })
-          .join(' | ')
-      );
+      let newTypes = Array.from(types);
+      newTypes = newTypes
+        .filter(type => {
+          return !(
+            type === 'never[]' &&
+            newTypes.some(otherType => {
+              return otherType.endsWith('[]');
+            })
+          );
+        })
+        .map(type => {
+          return type.replace(new RegExp('never', 'g'), 'any');
+        });
+
+      const newDeclaration = declaration.setType(newTypes.join(' | '));
 
       const modifiedStatement = this.getModifiedStatement(newDeclaration);
       modifiedStatementedNodes.add([
