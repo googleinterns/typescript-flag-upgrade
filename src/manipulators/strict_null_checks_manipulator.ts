@@ -90,7 +90,8 @@ export class StrictNullChecksManipulator extends Manipulator {
 
           if (
             (Node.isIdentifier(errorNode) ||
-              Node.isPropertyAccessExpression(errorNode)) &&
+              Node.isPropertyAccessExpression(errorNode) ||
+              Node.isCallExpression(errorNode)) &&
             diagnostic.getLength() === errorNode.getText().length
           ) {
             const newNode = errorNode.replaceWithText(
@@ -261,8 +262,8 @@ export class StrictNullChecksManipulator extends Manipulator {
       ([modifiedStatementedNode, indexToInsert]) => {
         if (
           !modifiedStatementedNode
-            .getStatementsWithComments()
-            [indexToInsert].getLeadingCommentRanges()
+            .getStatements()
+            [indexToInsert]?.getLeadingCommentRanges()
             .some(commentRange => {
               return commentRange.getText().includes(comment);
             })
