@@ -14,7 +14,15 @@
     limitations under the License.
 */
 
-import {Node, ts, Diagnostic} from 'ts-morph';
+import {
+  Node,
+  ts,
+  Diagnostic,
+  VariableDeclaration,
+  ParameterDeclaration,
+  PropertyDeclaration,
+  PropertySignature,
+} from 'ts-morph';
 
 export type ArgumentOptions = {
   [x: string]: unknown;
@@ -38,6 +46,9 @@ export type NodeDiagnostic = {
   diagnostic: Diagnostic<ts.Diagnostic>;
 };
 
+/**
+ * TypeScript error codes: https://github.com/microsoft/TypeScript/blob/v3.9.6/src/compiler/diagnosticMessages.json
+ */
 export enum ErrorCodes {
   CodePathNoReturn = 7030,
   ObjectPossiblyNull = 2531,
@@ -46,3 +57,11 @@ export enum ErrorCodes {
   TypeANotAssignableToTypeB = 2322,
   ArgumentNotAssignableToParameter = 2345,
 }
+
+export type DeclarationType = Map<
+  | VariableDeclaration
+  | ParameterDeclaration
+  | PropertyDeclaration
+  | PropertySignature,
+  Set<string>
+>;
