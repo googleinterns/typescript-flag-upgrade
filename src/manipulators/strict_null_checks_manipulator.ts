@@ -97,7 +97,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       );
 
       switch (diagnostic.getCode()) {
-        // When object is possibly null, add definite assignment assertion to identifier
+        // When object is possibly null or undefined
         case ErrorCodes.ObjectPossiblyNull:
         case ErrorCodes.ObjectPossiblyUndefined:
         case ErrorCodes.ObjectPossiblyNullOrUndefined: {
@@ -109,8 +109,7 @@ export class StrictNullChecksManipulator extends Manipulator {
           break;
         }
 
-        // When two types are not assignable to each other, add both types to the declaration (variable,
-        // parameter, or property declaration)
+        // When two types are not assignable to each other
         case ErrorCodes.TypeANotAssignableToTypeB: {
           this.handleNonAssignableTypes(
             errorNode,
@@ -174,6 +173,8 @@ export class StrictNullChecksManipulator extends Manipulator {
         })
         .sort();
 
+      // If declaration type has not changed, skip
+      // Otherwise, expand declaration type
       if (!_.isEqual(oldTypes, newTypes)) {
         const newDeclaration = declaration.setType(newTypes.join(' | '));
 
@@ -207,11 +208,17 @@ export class StrictNullChecksManipulator extends Manipulator {
     );
   }
 
+  /**
+   * Fix empty array declaration types to any[] instead of never[].
+   * @param {SourceFile} sourceFile - Source file to fix.
+   * @param {Set<SourceFile>} fixedSourceFiles - Set of source files that have already been fixed.
+   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   */
   private fixNeverType(
     sourceFile: SourceFile,
     fixedSourceFiles: Set<SourceFile>,
     modifiedDeclarationTypes: DeclarationType
-  ) {
+  ): void {
     if (!fixedSourceFiles.has(sourceFile)) {
       this.getNeverTypeArrayDeclarations(sourceFile).forEach(declaration => {
         this.addModifiedDeclarationTypes(
@@ -225,6 +232,12 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
   }
 
+  /**
+   * If a variable is possibly undefined or null, add definite assignment assertion.
+   * @param {Node<ts.Node>} errorNode - Node of possibly undefined object.
+   * @param {Diagnostic} diagnostic - Error diagnostic.
+   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   */
   private handlePossiblyNullUndefined(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
@@ -252,6 +265,13 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
   }
 
+  /**
+   * Handle object being assigned a type not assignable to the declared type by expanding declaration type.
+   * @param {Node<ts.Node>} errorNode - Node of object with non assignable type.
+   * @param {Diagnostic} diagnostic - Error diagnostic.
+   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   */
   private handleNonAssignableTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
@@ -309,6 +329,13 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
   }
 
+  /**
+   * Handle argument type not assignable to parameter type.
+   * @param {Node<ts.Node>} errorNode - Node of argument with non assignable type.
+   * @param {Diagnostic} diagnostic - Error diagnostic.
+   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   */
   private handleNonAssignableArgumentTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
@@ -366,7 +393,6 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   /**
    * Determines the list of types that a variable, parameter, or property was assigned.
-   *
    * @param {Node<ts.Node>} node - Identifier node for variable, parameter, or property.
    * @return {Type[]} List of types assigned to input variable, parameter, or property.
    */
@@ -386,7 +412,6 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   /**
    * Converts a Union type into a list of base types, if applicable.
-   *
    * @param {Type} type - Input type.
    * @return {Type[]} List of types represented by input type.
    */
@@ -400,9 +425,8 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   /**
    * Traverses through a node's ancestor and returns the closest Statement node.
-   *
    * @param {Node<ts.Node>} node - Modified node.
-   * @return {Node<ts.Node>} Closest Statement ancestor of modified node.
+   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
    */
   private getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
     return node.getParentWhile((parent, child) => {
@@ -410,6 +434,11 @@ export class StrictNullChecksManipulator extends Manipulator {
     }) as Statement;
   }
 
+  /**
+   * Returns list of array declarations with type never[].
+   * @param {SourceFile} sourceFile - Source file to search through.
+   * @return {Set<Node<ts.Node>>} Set of array declarations with type never[].
+   */
   private getNeverTypeArrayDeclarations(
     sourceFile: SourceFile
   ): Set<Node<ts.Node>> {
@@ -431,11 +460,17 @@ export class StrictNullChecksManipulator extends Manipulator {
     return neverTypeArrayDeclarations;
   }
 
+  /**
+   * Adds a list of types to a map of expanded declaration types.
+   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Node<ts.Node>} declaration - Declaration node to add type to.
+   * @param {string[]} typesToAdd - List of types to add to declaration.
+   */
   private addModifiedDeclarationTypes(
     modifiedDeclarationTypes: DeclarationType,
     declaration: Node<ts.Node>,
     typesToAdd: string[]
-  ) {
+  ): void {
     if (
       Node.isVariableDeclaration(declaration) ||
       Node.isParameterDeclaration(declaration) ||
@@ -458,6 +493,11 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
   }
 
+  /**
+   * Adds to the list of modified statements to insert comments before.
+   * @param {Set<[StatementedNode, number]>} statementedNotes - Set of (statemented node, index to insert at) pairs.
+   * @param {Statement} statement - Modified statement.
+   */
   private addModifiedStatement(
     statementedNotes: Set<[StatementedNode, number]>,
     statement: Statement
@@ -469,7 +509,13 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
   }
 
-  private addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V) {
+  /**
+   * Adds value to a Map with Set value types.
+   * @param {Map<K, Set<V>>} map - Map to add to.
+   * @param {K} key - Key to insert value at.
+   * @param {V} val - Value to insert.
+   */
+  private addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
     if (map.has(key)) {
       map.get(key)?.add(val);
     } else {
