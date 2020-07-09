@@ -1,7 +1,7 @@
 import {Project} from 'ts-morph';
-import {Runner} from '../src/runner';
-import {SourceFileComparer} from './source_file_matcher';
-import {OutOfPlaceEmitter} from '../src/emitters/out_of_place_emitter';
+import {Runner} from 'runner';
+import {SourceFileComparer} from '../testing/source_file_matcher';
+import {OutOfPlaceEmitter} from 'emitters/out_of_place_emitter';
 
 describe('Runner', () => {
   beforeAll(() => {
@@ -16,7 +16,7 @@ describe('Runner', () => {
     const actualOutputFilePath =
       './test/test_files/ts_upgrade/strict_null_checks_sample.ts';
     const expectedOutputFilePath =
-      './test/test_files/expected_output/strict_null_checks_sample.ts';
+      './test/test_files/golden/strict_null_checks_sample.ts';
 
     const project = new Project({
       tsConfigFilePath: inputConfigPath,

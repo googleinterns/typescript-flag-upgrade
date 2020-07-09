@@ -1,29 +1,20 @@
-import MatchersUtil = jasmine.MatchersUtil;
-import CustomMatcherFactories = jasmine.CustomMatcherFactories;
-import CustomEqualityTester = jasmine.CustomEqualityTester;
-import CustomMatcher = jasmine.CustomMatcher;
-import CustomMatcherResult = jasmine.CustomMatcherResult;
-
 import {SourceFile} from 'ts-morph';
 
 declare global {
   namespace jasmine {
     interface Matchers<T> {
-      toHaveSameASTAs(expectationFailOutput?: any): boolean;
+      toHaveSameASTAs(expectationFailOutput?: SourceFile): boolean;
     }
   }
 }
 
-export const SourceFileComparer: CustomMatcherFactories = {
-  toHaveSameASTAs: function (
-    util: MatchersUtil,
-    customEqualityTesters: readonly CustomEqualityTester[]
-  ): CustomMatcher {
+export const SourceFileComparer: jasmine.CustomMatcherFactories = {
+  toHaveSameASTAs: function (): jasmine.CustomMatcher {
     return {
       compare: function (
         actual: SourceFile,
         expected: SourceFile
-      ): CustomMatcherResult {
+      ): jasmine.CustomMatcherResult {
         const diffs: string[] = [];
 
         const actualDescendants = actual.forEachDescendantAsArray();
