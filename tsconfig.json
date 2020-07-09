@@ -14,5 +14,5 @@
     "noImplicitReturns": true,
     "sourceMap": true,
   },
-  "include": ["src/**/*.ts", "experimental/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

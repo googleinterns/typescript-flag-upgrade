@@ -28,10 +28,11 @@ import {Manipulator} from './manipulators/manipulator';
 import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
 import {ErrorDetector} from './error_detectors/error_detector';
 import {ProdErrorDetector} from './error_detectors/prod_error_detector';
+import {InPlaceEmitter} from 'emitters/in_place_emitter';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
-  private args: ArgumentOptions;
+  private args?: ArgumentOptions;
   private project: Project;
 
   private parser: Parser;
@@ -44,19 +45,35 @@ export class Runner {
   /**
    * Instantiates project and appropriate modules.
    * @param {ArgumentOptions} args - Arguments passed.
+   * @param {Project} project - Project to override arguments.
+   * @param {Parser} parser - Parser to override arguments.
+   * @param {ErrorDetector} errorDetector - Error detector to override arguments.
+   * @param {Manipulator[]} manipulators - List of manipulators to override arguments.
+   * @param {Emitter} emitter - Emitter to override arguments.
    */
-  constructor(args: ArgumentOptions) {
+  constructor(
+    args?: ArgumentOptions,
+    project?: Project,
+    parser?: Parser,
+    errorDetector?: ErrorDetector,
+    manipulators?: Manipulator[],
+    emitter?: Emitter
+  ) {
+    if (!project && !args) {
+      throw new Error('Neither arguments nor project provided.');
+    }
+
     this.args = args;
-    this.project = this.createProject();
-    this.parser = new Parser(this.project);
-    this.errorDetector = new ProdErrorDetector();
-    this.manipulators = [
+    this.project = project || this.createProject(this.args!);
+    this.parser = parser || new Parser(this.project);
+    this.errorDetector = errorDetector || new ProdErrorDetector();
+    this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
       new NoImplicitAnyManipulator(this.errorDetector),
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
     ];
-    this.emitter = new OutOfPlaceEmitter(this.project);
+    this.emitter = emitter || new OutOfPlaceEmitter(this.project);
   }
 
   /**
@@ -92,13 +109,14 @@ export class Runner {
   }
 
   /**
-   * Creates a ts-morph project from filepath.
+   * Creates a ts-morph project from CLI arguments.
+   * @param {ArgumentOptions} args - CLI Arguments containing project properties.
    * @return {Project} Created project.
    */
-  private createProject(): Project {
-    if (this.args.i) {
+  private createProject(args: ArgumentOptions): Project {
+    if (args.i) {
       const project = new Project({
-        tsConfigFilePath: path.join(process.cwd(), this.args.p),
+        tsConfigFilePath: path.join(process.cwd(), args.p),
         addFilesFromTsConfig: false,
         compilerOptions: {
           strictNullChecks: true,
@@ -109,7 +127,7 @@ export class Runner {
       });
 
       project.addSourceFilesAtPaths(
-        path.join(process.cwd(), this.args.i) + '/**/*{.d.ts,.ts}'
+        path.join(process.cwd(), args.i) + '/**/*{.d.ts,.ts}'
       );
 
       project.resolveSourceFileDependencies();
@@ -117,7 +135,7 @@ export class Runner {
     }
 
     return new Project({
-      tsConfigFilePath: path.join(process.cwd(), this.args.p),
+      tsConfigFilePath: path.join(process.cwd(), args.p),
       compilerOptions: {
         strictNullChecks: true,
         strictPropertyInitialization: true,

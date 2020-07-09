@@ -17,7 +17,7 @@ class StrictNullChecksSample {
 // Test: Assign variable to null
 function assignNull() {
   // Fix: let n: number | null = 0;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   let n: null | number = 0;
   n = null;
   n = 5;
@@ -26,7 +26,7 @@ function assignNull() {
 // Test: Assign variable to undefined
 function assignUndefined() {
   // Fix: let n: number | undefined = 0;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   let n: number | undefined = 0;
   n = undefined;
   n = 5;
@@ -35,7 +35,7 @@ function assignUndefined() {
 // Test: Assign variable to null and undefined
 function assignNullAndUndefined() {
   // Fix: let n: number | null | undefined = 0;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   let n: null | number | undefined = 0;
   n = null;
   n = 5;
@@ -46,7 +46,7 @@ function assignNullAndUndefined() {
 // Test: Assign variable to null in conditional branch
 function assignInBranch(goInBranch: boolean) {
   // Fix: let n: number | null = 0;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   let n: null | number = 0;
   if (goInBranch) {
     n = null;
@@ -60,7 +60,7 @@ function doesNotExpectNull(n: number) {}
 function passesNullValue() {
   const n: number | null = null;
   // Fix: doesNotExpectNull(n!);
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   doesNotExpectNull(n!);
 }
 
@@ -70,14 +70,14 @@ function doesNotExpectNullUndefined(n: number) {}
 function passesNullVariable() {
   const n: number | null = null;
   // Fix: doesNotExpectNullUndefined(n!);
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   doesNotExpectNullUndefined(n!);
 }
 
 function passesUndefinedVariable() {
   const n: number | undefined = undefined;
   // Fix: doesNotExpectNullUndefined(n!);
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   doesNotExpectNullUndefined(n!);
 }
 
@@ -91,7 +91,7 @@ function turnsIntoNull(n: null | number) {
 // Test: Assign non-null to null variable
 function assignNonNullValueToNullVar() {
   // Fix: let n: null | number = null;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   let n: null | number = null;
   n = returnsNumber();
 }
@@ -103,16 +103,17 @@ function returnsNumber() {
 // Test: Add element to empty list
 function addToEmptyList() {
   // Fix: const emptyList: number[] = [];
-  const emptyList = [];
-  emptyList.push(5);
+  const emptyList: any[] = [];
+    // typescript-flag-upgrade automated fix: --strictNullChecks
+  emptyList.push(5!);
 }
 
 // Test: Return null value but not in return type
 function unexpectedlyReturnsNull(): number {
   const n: number | null = null;
   // Fix: return n!;
-  // typescript-flag-upgrade automated fix: --strictNullChecks
-  return n!;
+    // typescript-flag-upgrade automated fix: --strictNullChecks
+  return (n)!
 }
 
 // Test: Return expression that possibly evaluates to null
@@ -120,12 +121,12 @@ function returnExpression(): number {
   const n: number | null = null;
   if (true) {
     // Fix: return returnsPossiblyNull()!;
-    // typescript-flag-upgrade automated fix: --strictNullChecks
-    return returnsPossiblyNull()!;
+      // typescript-flag-upgrade automated fix: --strictNullChecks
+    return (returnsPossiblyNull())!
   } else {
     // Fix: return (n || returnsPossiblyNull())!;
-    // typescript-flag-upgrade automated fix: --strictNullChecks
-    return (n || returnsPossiblyNull())!;
+      // typescript-flag-upgrade automated fix: --strictNullChecks
+    return (n || returnsPossiblyNull())!
   }
 }
 
@@ -139,7 +140,7 @@ function objectPossiblyNull(v: number | null) {
   console.log(v!.toString());
 
   // Fix: console.log('V: ' + (v != null ? v.toString() : 'unknown'));
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   console.log('V: ' + v != null ? v!.toString() : 'unknown');
 }
 
@@ -149,7 +150,7 @@ function objectPossiblyUndefined(v: number | undefined) {
   console.log(v!.toString());
 
   // Fix: console.log('V: ' + (v != null ? v.toString() : 'unknown'));
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   console.log('V: ' + v != null ? v!.toString() : 'unknown');
 }
 
@@ -159,6 +160,6 @@ function objectPossiblyNullUndefined(v: number | null | undefined) {
   console.log(v!.toString());
 
   // Fix: console.log('V: ' + (v != null ? v.toString() : 'unknown'));
-  // typescript-flag-upgrade automated fix: --strictNullChecks
+    // typescript-flag-upgrade automated fix: --strictNullChecks
   console.log('V: ' + v != null ? v!.toString() : 'unknown');
 }
