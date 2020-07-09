@@ -143,6 +143,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       newTypes = newTypes
         .filter(type => {
           if (
+            // Eg. never[] | string[] -> string[]
             type === 'never[]' &&
             newTypes.some(otherType => {
               return otherType.endsWith('[]');
@@ -150,6 +151,7 @@ export class StrictNullChecksManipulator extends Manipulator {
           ) {
             return false;
           } else if (
+            // Eg. any | string -> any
             type !== 'any' &&
             newTypes.some(otherType => {
               return otherType === 'any';
@@ -157,6 +159,7 @@ export class StrictNullChecksManipulator extends Manipulator {
           ) {
             return false;
           } else if (
+            // Eg. any[] | string[] -> any[]
             type.endsWith('[]') &&
             type !== 'any[]' &&
             newTypes.some(otherType => {
@@ -219,6 +222,7 @@ export class StrictNullChecksManipulator extends Manipulator {
     fixedSourceFiles: Set<SourceFile>,
     modifiedDeclarationTypes: DeclarationType
   ): void {
+    // Eg. let foo = []; -> let foo: any[] = [];
     if (!fixedSourceFiles.has(sourceFile)) {
       this.getNeverTypeArrayDeclarations(sourceFile).forEach(declaration => {
         this.addModifiedDeclarationTypes(
@@ -254,6 +258,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         Node.isCallExpression(errorNode)) &&
       diagnostic.getLength() === errorNode.getText().length
     ) {
+      // Eg. foo.toString(); -> foo!.toString()
       const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
 
       const modifiedStatement = this.getModifiedStatement(newNode);
@@ -282,6 +287,8 @@ export class StrictNullChecksManipulator extends Manipulator {
       return;
     }
 
+    // If node is an object that is assigned an unassiable type
+    // Eg. let n = 0; n = undefined; -> let n: number | undefined = 0;
     if (
       (Node.isIdentifier(errorNode) ||
         Node.isPropertyAccessExpression(errorNode)) &&
@@ -304,6 +311,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         );
       });
       // If error node is a return statement, add definite assignment assertion to return value
+      // Eg. return n; -> return n!;
     } else if (Node.isReturnStatement(errorNode)) {
       if (
         errorNode.getChildCount() === 1 ||
@@ -351,6 +359,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       errorNode.getFirstChildByKind(SyntaxKind.ArrowFunction);
 
     // If argument is a function, add null and undefined types to parameter declaration
+    // Eg. foo(function bar (n: number) {}); -> foo(function bar (n: number | null | undefined) {});
     if (Node.isCallExpression(errorNode) && childIsFunc) {
       const parameterDeclaration = childIsFunc.getFirstChildByKind(
         SyntaxKind.Parameter
@@ -381,6 +390,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       }
 
       // Otherwise, add definite assignment assertion to the argument being passed
+      // Eg. foo(n); -> foo(n!);
     } else if (!Node.isNonNullExpression(errorNode)) {
       const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
 
