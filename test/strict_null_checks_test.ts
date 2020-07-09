@@ -1,15 +1,7 @@
 import {Project} from 'ts-morph';
 import {Runner} from '../src/runner';
-import {SourceFileComparer} from './sourcefile.matcher';
+import {SourceFileComparer} from './source_file_matcher';
 import {OutOfPlaceEmitter} from '../src/emitters/out_of_place_emitter';
-
-declare global {
-  namespace jasmine {
-    interface Matchers<T> {
-      toHaveSameASTAs(expectationFailOutput?: any): boolean;
-    }
-  }
-}
 
 describe('Runner', () => {
   beforeAll(() => {

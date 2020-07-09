@@ -4,7 +4,15 @@ import CustomEqualityTester = jasmine.CustomEqualityTester;
 import CustomMatcher = jasmine.CustomMatcher;
 import CustomMatcherResult = jasmine.CustomMatcherResult;
 
-import {SourceFile, Node, ts} from 'ts-morph';
+import {SourceFile} from 'ts-morph';
+
+declare global {
+  namespace jasmine {
+    interface Matchers<T> {
+      toHaveSameASTAs(expectationFailOutput?: any): boolean;
+    }
+  }
+}
 
 export const SourceFileComparer: CustomMatcherFactories = {
   toHaveSameASTAs: function (
