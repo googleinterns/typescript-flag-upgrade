@@ -90,12 +90,6 @@ export class StrictNullChecksManipulator extends Manipulator {
 
     // Iterate through each node in reverse traversal order to prevent interference
     errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
-      this.fixNeverType(
-        errorNode.getSourceFile(),
-        fixedNeverTypeSourceFiles,
-        modifiedDeclarationTypes
-      );
-
       switch (diagnostic.getCode()) {
         // When object is possibly null or undefined
         case ErrorCodes.ObjectPossiblyNull:
@@ -131,6 +125,14 @@ export class StrictNullChecksManipulator extends Manipulator {
           break;
         }
       }
+    });
+
+    errorNodes.forEach(({node: errorNode}) => {
+      this.fixNeverType(
+        errorNode.getSourceFile(),
+        fixedNeverTypeSourceFiles,
+        modifiedDeclarationTypes
+      );
     });
 
     // Expand all declarations to include the calculated set of types
@@ -388,15 +390,30 @@ export class StrictNullChecksManipulator extends Manipulator {
           'null'
         );
       }
+    } else {
+      // If argument is being called by an empty array, ignore
+      const parent = errorNode.getParentIfKind(SyntaxKind.CallExpression);
+      const sibling = parent?.getFirstChildIfKind(
+        SyntaxKind.PropertyAccessExpression
+      );
+      const callerType = sibling?.getFirstChild()?.getType().getText();
+
+      if (parent && sibling && callerType === 'never[]') {
+        return;
+      }
 
       // Otherwise, add definite assignment assertion to the argument being passed
       // Eg. foo(n); -> foo(n!);
-    } else if (!Node.isNonNullExpression(errorNode)) {
-      const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
+      if (!Node.isNonNullExpression(errorNode)) {
+        const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
 
-      const modifiedStatement = this.getModifiedStatement(newNode);
-      if (modifiedStatement) {
-        this.addModifiedStatement(modifiedStatementedNodes, modifiedStatement);
+        const modifiedStatement = this.getModifiedStatement(newNode);
+        if (modifiedStatement) {
+          this.addModifiedStatement(
+            modifiedStatementedNodes,
+            modifiedStatement
+          );
+        }
       }
     }
   }
