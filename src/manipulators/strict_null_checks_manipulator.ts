@@ -31,7 +31,11 @@ import {
   Statement,
   PropertySignature,
 } from 'ts-morph';
-import {ErrorCodes, DeclarationType} from 'src/types';
+import {
+  ErrorCodes,
+  DeclarationType,
+  STRICT_NULL_CHECKS_COMMENT,
+} from 'src/types';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.
@@ -194,21 +198,12 @@ export class StrictNullChecksManipulator extends Manipulator {
     });
 
     // Insert comment before each modified statement
-    const comment =
-      '// typescript-flag-upgrade automated fix: --strictNullChecks';
-
     modifiedStatementedNodes.forEach(
       ([modifiedStatementedNode, indexToInsert]) => {
-        if (
-          !modifiedStatementedNode
-            .getStatements()
-            [indexToInsert]?.getLeadingCommentRanges()
-            .some(commentRange => {
-              return commentRange.getText().includes(comment);
-            })
-        ) {
-          modifiedStatementedNode.insertStatements(indexToInsert, comment);
-        }
+        modifiedStatementedNode.insertStatements(
+          indexToInsert,
+          STRICT_NULL_CHECKS_COMMENT
+        );
       }
     );
   }
@@ -531,7 +526,13 @@ export class StrictNullChecksManipulator extends Manipulator {
   ): void {
     const parent = statement.getParent();
 
-    if (parent && Node.isStatementedNode(parent)) {
+    if (
+      parent &&
+      Node.isStatementedNode(parent) &&
+      !statement.getLeadingCommentRanges().some(commentRange => {
+        return commentRange.getText().includes(STRICT_NULL_CHECKS_COMMENT);
+      })
+    ) {
       statementedNotes.add([parent, statement.getChildIndex()]);
     }
   }
