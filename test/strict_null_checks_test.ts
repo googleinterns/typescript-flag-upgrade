@@ -1,7 +1,7 @@
 import {Project} from 'ts-morph';
-import {Runner} from 'runner';
-import {SourceFileComparer} from '../testing/source_file_matcher';
-import {OutOfPlaceEmitter} from 'emitters/out_of_place_emitter';
+import {Runner} from 'src/runner';
+import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
+import {SourceFileComparer} from 'testing/source_file_matcher';
 
 describe('Runner', () => {
   beforeAll(() => {
@@ -30,11 +30,11 @@ describe('Runner', () => {
     project.resolveSourceFileDependencies();
 
     new Runner(
-      undefined,
+      /* args*/ undefined,
       project,
-      undefined,
-      undefined,
-      undefined,
+      /* parser */ undefined,
+      /* errorDetector */ undefined,
+      /* manipulators */ undefined,
       new OutOfPlaceEmitter(project, relativeOutputPath)
     ).run();
 

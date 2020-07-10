@@ -28,7 +28,7 @@ import {Manipulator} from './manipulators/manipulator';
 import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
 import {ErrorDetector} from './error_detectors/error_detector';
 import {ProdErrorDetector} from './error_detectors/prod_error_detector';
-import {InPlaceEmitter} from 'emitters/in_place_emitter';
+import {InPlaceEmitter} from 'src/emitters/in_place_emitter';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
@@ -73,7 +73,7 @@ export class Runner {
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
     ];
-    this.emitter = emitter || new OutOfPlaceEmitter(this.project);
+    this.emitter = emitter || new InPlaceEmitter(this.project);
   }
 
   /**

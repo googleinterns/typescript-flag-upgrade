@@ -15,7 +15,7 @@
 */
 
 import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
-import {NodeDiagnostic} from 'types';
+import {NodeDiagnostic} from 'src/types';
 
 /** Base class for filtering diagnostics. */
 export abstract class ErrorDetector {
