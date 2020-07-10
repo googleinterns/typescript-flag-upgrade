@@ -24,7 +24,7 @@ function passesUndefinedVariable() {
 
 // Test: Add element to empty list
 function addToEmptyList() {
-  // Fix: const emptyList: number[] = [];
+  // Fix: const emptyList: any[] = [];
   const emptyList = [];
   emptyList.push(5);
 }
