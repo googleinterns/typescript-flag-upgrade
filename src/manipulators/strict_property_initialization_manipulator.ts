@@ -17,6 +17,7 @@
 import {Manipulator} from './manipulator';
 import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorCodes} from '../types';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
@@ -26,9 +27,31 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
   constructor(errorDetector: ErrorDetector) {
-    super(errorDetector, new Set<number>([]));
-    this.nodeKinds = new Set<SyntaxKind>();
+    super(
+      errorDetector,
+      new Set<number>([ErrorCodes.PropertyNoInitializer])
+    );
+    this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);
   }
 
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}
+  /**
+   * Manipulates AST of project to fix for the strictPropertyInitialization compiler flag given diagnostics.
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   */
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+    // // Retrieve AST nodes corresponding to diagnostics with relevant error codes
+    // const errorNodes = this.errorDetector.filterDiagnosticsByKind(
+    //   this.errorDetector.getNodesFromDiagnostics(
+    //     this.errorDetector.filterDiagnosticsByCode(
+    //       diagnostics,
+    //       this.errorCodesToFix
+    //     )
+    //   ),
+    //   this.nodeKinds
+    // );
+    // // Iterate through each node in reverse traversal order to prevent interference
+    // errorNodes.forEach(({node: errorNode}) => {
+    //   errorNode.replaceWithText(errorNode.getText() + '?');
+    // });
+  }
 }
