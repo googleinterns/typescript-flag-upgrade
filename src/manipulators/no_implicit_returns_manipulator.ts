@@ -16,8 +16,8 @@
 
 import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
 import {Manipulator} from './manipulator';
-import {ErrorCodes} from 'types';
-import {ErrorDetector} from 'error_detectors/error_detector';
+import {ErrorCodes} from 'src/types';
+import {ErrorDetector} from 'src/error_detectors/error_detector';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
@@ -44,7 +44,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
-    const errorNodes = this.errorDetector.sortAndFilterDiagnosticsByKind(
+    const errorNodes = this.errorDetector.filterDiagnosticsByKind(
       this.errorDetector.getNodesFromDiagnostics(
         this.errorDetector.filterDiagnosticsByCode(
           diagnostics,

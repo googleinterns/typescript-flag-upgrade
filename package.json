@@ -8,7 +8,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "ts-node -r tsconfig-paths/register node_modules/jasmine/bin/jasmine --config=jasmine.json",
     "dev": "ts-node -r tsconfig-paths/register src/index.ts",
     "experimental": "ts-node -r tsconfig-paths/register experimental/index.ts",
     "check": "gts check",

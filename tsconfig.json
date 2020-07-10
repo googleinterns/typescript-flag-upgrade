@@ -1,9 +1,9 @@
 {
   "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
-    "baseUrl": "src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./*"]
     },
     "rootDir": ".",
     "outDir": "build",
@@ -11,7 +11,8 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "sourceMap": true,
   },
-  "include": ["src/**/*.ts", "experimental/**/*.ts"]
+  "include": ["src/**/*.ts", "test/*.ts", "testing/**/*.ts"]
 }
