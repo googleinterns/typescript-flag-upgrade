@@ -39,19 +39,20 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
-    // // Retrieve AST nodes corresponding to diagnostics with relevant error codes
-    // const errorNodes = this.errorDetector.filterDiagnosticsByKind(
-    //   this.errorDetector.getNodesFromDiagnostics(
-    //     this.errorDetector.filterDiagnosticsByCode(
-    //       diagnostics,
-    //       this.errorCodesToFix
-    //     )
-    //   ),
-    //   this.nodeKinds
-    // );
-    // // Iterate through each node in reverse traversal order to prevent interference
-    // errorNodes.forEach(({node: errorNode}) => {
-    //   errorNode.replaceWithText(errorNode.getText() + '?');
-    // });
+    // Retrieve AST nodes corresponding to diagnostics with relevant error codes
+    const errorNodes = this.errorDetector.filterDiagnosticsByKind(
+      this.errorDetector.getNodesFromDiagnostics(
+        this.errorDetector.filterDiagnosticsByCode(
+          diagnostics,
+          this.errorCodesToFix
+        )
+      ),
+      this.nodeKinds
+    );
+
+    // Iterate through each node in reverse traversal order to prevent interference
+    errorNodes.forEach(({node: errorNode}) => {
+      errorNode.replaceWithText(errorNode.getText() + '?');
+    });
   }
 }
