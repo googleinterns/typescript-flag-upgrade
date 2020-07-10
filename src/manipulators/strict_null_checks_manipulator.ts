@@ -65,7 +65,7 @@ export class StrictNullChecksManipulator extends Manipulator {
   }
 
   /**
-   * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics.
+   * Manipulates AST of project to fix for the strictNullChecks compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
