@@ -12,11 +12,21 @@ describe('Runner', () => {
     const relativeOutputPath = './ts_upgrade';
     const inputConfigPath = './test/test_files/tsconfig.json';
 
-    const inputFilePath = './test/test_files/strict_null_checks_sample.ts';
-    const actualOutputFilePath =
-      './test/test_files/ts_upgrade/strict_null_checks_sample.ts';
-    const expectedOutputFilePath =
-      './test/test_files/golden/strict_null_checks_sample.ts';
+    const inputFilePaths = [
+      './test/test_files/strict_null_checks/object_possibly_null.ts',
+      './test/test_files/strict_null_checks/unassignable_argument_type.ts',
+      './test/test_files/strict_null_checks/unassignable_variable_type.ts',
+    ];
+    const actualOutputFilePaths = [
+      './test/test_files/strict_null_checks/ts_upgrade/object_possibly_null.ts',
+      './test/test_files/strict_null_checks/ts_upgrade/unassignable_argument_type.ts',
+      './test/test_files/strict_null_checks/ts_upgrade/unassignable_variable_type.ts',
+    ];
+    const expectedOutputFilePaths = [
+      './test/test_files/golden/strict_null_checks/object_possibly_null.ts',
+      './test/test_files/golden/strict_null_checks/unassignable_argument_type.ts',
+      './test/test_files/golden/strict_null_checks/unassignable_variable_type.ts',
+    ];
 
     const project = new Project({
       tsConfigFilePath: inputConfigPath,
@@ -26,7 +36,7 @@ describe('Runner', () => {
       },
     });
 
-    project.addSourceFileAtPath(inputFilePath);
+    project.addSourceFilesAtPaths(inputFilePaths);
     project.resolveSourceFileDependencies();
 
     new Runner(
@@ -38,9 +48,15 @@ describe('Runner', () => {
       new OutOfPlaceEmitter(project, relativeOutputPath)
     ).run();
 
-    const expectedOutput = project.addSourceFileAtPath(expectedOutputFilePath);
-    const actualOutput = project.addSourceFileAtPath(actualOutputFilePath);
+    const expectedOutputs = project.addSourceFilesAtPaths(
+      expectedOutputFilePaths
+    );
+    const actualOutputs = project.addSourceFilesAtPaths(actualOutputFilePaths);
 
-    expect(actualOutput).toHaveSameASTAs(expectedOutput);
+    expect(expectedOutputs.length).toEqual(actualOutputs.length);
+
+    for (let i = 0; i < actualOutputs.length; i++) {
+      expect(actualOutputs[i]).toHaveSameASTAs(expectedOutputs[i]);
+    }
   });
 });

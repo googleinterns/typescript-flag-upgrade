@@ -1,2 +1,2 @@
 /dist
-/ts_upgrade
+**/ts_upgrade
