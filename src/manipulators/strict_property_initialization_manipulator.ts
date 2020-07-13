@@ -15,7 +15,7 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
+import {Diagnostic, ts, SyntaxKind, Node, Identifier} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes} from '../types';
 
@@ -50,9 +50,36 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
       this.nodeKinds
     );
 
+    const modifiedIdentifiers = new Set<Identifier>();
+
     // Iterate through each node in reverse traversal order to prevent interference
-    errorNodes.forEach(({node: errorNode}) => {
-      errorNode.replaceWithText(errorNode.getText() + '?');
+    errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
+      if (Node.isIdentifier(errorNode)) {
+        modifiedIdentifiers.add(errorNode as Identifier);
+
+        errorNode.findReferences().forEach(reference => {
+          const declaration = reference.getDefinition().getDeclarationNode();
+          if (
+            declaration &&
+            (Node.isPropertyDeclaration(declaration) ||
+              Node.isPropertySignature(declaration))
+          ) {
+            const referenceIdentifer = declaration.getFirstChildIfKind(
+              SyntaxKind.Identifier
+            );
+
+            if (referenceIdentifer) {
+              modifiedIdentifiers.add(referenceIdentifer);
+            }
+          }
+        });
+      }
+    });
+
+    modifiedIdentifiers.forEach(identifier => {
+      if (!identifier.getType().getText().includes('undefined')) {
+        identifier.replaceWithText(identifier.getText() + '?');
+      }
     });
   }
 }
