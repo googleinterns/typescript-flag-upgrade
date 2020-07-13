@@ -56,6 +56,7 @@ export enum ErrorCodes {
   ObjectPossiblyNullOrUndefined = 2533,
   TypeANotAssignableToTypeB = 2322,
   ArgumentNotAssignableToParameter = 2345,
+  NoOverloadMatches = 2769,
 }
 
 export type DeclarationType = Map<
