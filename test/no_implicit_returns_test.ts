@@ -18,6 +18,8 @@ import {Project} from 'ts-morph';
 import {Runner} from 'src/runner';
 import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
 import {SourceFileComparer} from 'testing/source_file_matcher';
+import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
+import {NoImplicitReturnsManipulator} from '@/src/manipulators/no_implicit_returns_manipulator';
 
 describe('Runner', () => {
   beforeAll(() => {
@@ -33,12 +35,12 @@ describe('Runner', () => {
       './test/test_files/no_implicit_returns/empty_return.ts',
     ];
     const actualOutputFilePaths = [
-        './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
-        './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
+      './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
+      './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
     ];
     const expectedOutputFilePaths = [
-        './test/test_files/golden/no_implicit_returns/no_return.ts',
-        './test/test_files/golden/no_implicit_returns/empty_return.ts',
+      './test/test_files/golden/no_implicit_returns/no_return.ts',
+      './test/test_files/golden/no_implicit_returns/empty_return.ts',
     ];
 
     const project = new Project({
@@ -52,12 +54,14 @@ describe('Runner', () => {
     project.addSourceFilesAtPaths(inputFilePaths);
     project.resolveSourceFileDependencies();
 
+    const errorDetector = new ProdErrorDetector();
+
     new Runner(
       /* args*/ undefined,
       project,
       /* parser */ undefined,
-      /* errorDetector */ undefined,
-      /* manipulators */ undefined,
+      errorDetector,
+      [new NoImplicitReturnsManipulator(errorDetector)],
       new OutOfPlaceEmitter(project, relativeOutputPath)
     ).run();
 
