@@ -58,6 +58,8 @@ export class Runner {
     manipulators?: Manipulator[],
     emitter?: Emitter
   ) {
+    this.parser = parser || new Parser();
+
     if (project) {
       this.project = project;
     } else if (args) {
@@ -72,7 +74,6 @@ export class Runner {
       throw new Error('Neither arguments nor project provided.');
     }
 
-    this.parser = parser || new Parser(this.project);
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
@@ -80,7 +81,7 @@ export class Runner {
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
     ];
-    this.emitter = emitter || new InPlaceEmitter(this.project);
+    this.emitter = emitter || new InPlaceEmitter();
   }
 
   /**
@@ -94,7 +95,7 @@ export class Runner {
       })
     );
 
-    let errors = this.parser.parse();
+    let errors = this.parser.parse(this.project);
     let prevErrors = errors;
     let errorsExist;
 
@@ -105,14 +106,14 @@ export class Runner {
           manipulator.fixErrors(errors);
           errorsExist = true;
           prevErrors = errors;
-          errors = this.parser.parse();
+          errors = this.parser.parse(this.project);
           break;
         }
       }
     } while (errorsExist && !_.isEqual(errors, prevErrors));
     // TODO: Log if previous errors are same as current errors.
 
-    this.emitter.emit();
+    this.emitter.emit(this.project);
   }
 
   /**
@@ -121,10 +122,7 @@ export class Runner {
    * @param {boolean} setFlag - Whether the flags should be set in the project or not.
    * @return {Project} Created project.
    */
-  private createProject(
-    args: ArgumentOptions,
-    setFlag: boolean = true
-  ): Project {
+  private createProject(args: ArgumentOptions, setFlag = true): Project {
     if (args.i) {
       const project = new Project({
         tsConfigFilePath: path.join(process.cwd(), args.p),
@@ -157,8 +155,8 @@ export class Runner {
   }
 
   private verifyProject(args: ArgumentOptions): boolean {
-    return new Parser(this.createProject(args, false))
-      .parse()
+    return this.parser
+      .parse(this.createProject(args, false))
       .every(diagnostic => {
         return diagnostic.getCategory() !== ts.DiagnosticCategory.Error;
       });

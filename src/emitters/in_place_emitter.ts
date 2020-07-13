@@ -22,14 +22,11 @@ import {Project} from 'ts-morph';
  * @extends {Emitter}
  */
 export class InPlaceEmitter extends Emitter {
-  constructor(project: Project) {
-    super(project);
-  }
-
   /**
    * Overwrites original input source files.
+   * @param {Project} project - ts-morph project to be emitted.
    */
-  emit(): void {
-    this.project.saveSync();
+  emit(project: Project): void {
+    project.saveSync();
   }
 }
