@@ -63,13 +63,8 @@ export class Runner {
     if (project) {
       this.project = project;
     } else if (args) {
-      if (this.verifyProject(args)) {
-        this.project = this.createProject(args);
-      } else {
-        throw new Error(
-          'Project not current compiling with flags set to false.'
-        );
-      }
+      this.verifyProject(args);
+      this.project = this.createProject(args);
     } else {
       throw new Error('Neither arguments nor project provided.');
     }
@@ -154,11 +149,17 @@ export class Runner {
     });
   }
 
-  private verifyProject(args: ArgumentOptions): boolean {
-    return this.parser
-      .parse(this.createProject(args, false))
-      .every(diagnostic => {
+  /**
+   * Verifies that the project user passes in through CLI compiles initially with flags set to false.
+   * @param {ArgumentOptions} args - CLI Arguments containing project properties.
+   */
+  private verifyProject(args: ArgumentOptions): void {
+    if (
+      !this.parser.parse(this.createProject(args, false)).every(diagnostic => {
         return diagnostic.getCategory() !== ts.DiagnosticCategory.Error;
-      });
+      })
+    ) {
+      throw new Error('Project not current compiling with flags set to false.');
+    }
   }
 }
