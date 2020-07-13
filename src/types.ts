@@ -65,3 +65,8 @@ export type DeclarationType = Map<
   | PropertySignature,
   Set<string>
 >;
+
+export const STRICT_NULL_CHECKS_COMMENT =
+  '// typescript-flag-upgrade automated fix: --strictNullChecks';
+export const NO_IMPLICIT_RETURNS_COMMENT =
+  '// typescript-flag-upgrade automated fix: --noImplicitReturns';

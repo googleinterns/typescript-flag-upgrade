@@ -16,7 +16,7 @@
 
 import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
 import {Manipulator} from './manipulator';
-import {ErrorCodes} from 'src/types';
+import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from 'src/types';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 
 /**
@@ -94,9 +94,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
   }
 
   private addChildReturnStatement(node: StatementedNode): void {
-    node.addStatements(
-      '// typescript-flag-upgrade automated fix: --noImplicitReturns'
-    );
+    node.addStatements(NO_IMPLICIT_RETURNS_COMMENT);
     node.addStatements('return undefined;');
   }
 }
