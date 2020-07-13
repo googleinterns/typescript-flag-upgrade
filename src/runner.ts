@@ -16,7 +16,7 @@
 
 import path from 'path';
 import _ from 'lodash';
-import {Project} from 'ts-morph';
+import {Project, ts} from 'ts-morph';
 import {ArgumentOptions} from './types';
 import {Emitter} from './emitters/emitter';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
@@ -32,7 +32,6 @@ import {InPlaceEmitter} from 'src/emitters/in_place_emitter';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
-  private args?: ArgumentOptions;
   private project: Project;
 
   private parser: Parser;
@@ -59,12 +58,20 @@ export class Runner {
     manipulators?: Manipulator[],
     emitter?: Emitter
   ) {
-    if (!project && !args) {
+    if (project) {
+      this.project = project;
+    } else if (args) {
+      if (this.verifyProject(args)) {
+        this.project = this.createProject(args);
+      } else {
+        throw new Error(
+          'Project not current compiling with flags set to false.'
+        );
+      }
+    } else {
       throw new Error('Neither arguments nor project provided.');
     }
 
-    this.args = args;
-    this.project = project || this.createProject(this.args!);
     this.parser = parser || new Parser(this.project);
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
@@ -111,18 +118,22 @@ export class Runner {
   /**
    * Creates a ts-morph project from CLI arguments.
    * @param {ArgumentOptions} args - CLI Arguments containing project properties.
+   * @param {boolean} setFlag - Whether the flags should be set in the project or not.
    * @return {Project} Created project.
    */
-  private createProject(args: ArgumentOptions): Project {
+  private createProject(
+    args: ArgumentOptions,
+    setFlag: boolean = true
+  ): Project {
     if (args.i) {
       const project = new Project({
         tsConfigFilePath: path.join(process.cwd(), args.p),
         addFilesFromTsConfig: false,
         compilerOptions: {
-          strictNullChecks: true,
-          strictPropertyInitialization: true,
-          noImplicitAny: true,
-          noImplicitReturns: true,
+          strictNullChecks: setFlag,
+          strictPropertyInitialization: setFlag,
+          noImplicitAny: setFlag,
+          noImplicitReturns: setFlag,
         },
       });
 
@@ -137,11 +148,19 @@ export class Runner {
     return new Project({
       tsConfigFilePath: path.join(process.cwd(), args.p),
       compilerOptions: {
-        strictNullChecks: true,
-        strictPropertyInitialization: true,
-        noImplicitAny: true,
-        noImplicitReturns: true,
+        strictNullChecks: setFlag,
+        strictPropertyInitialization: setFlag,
+        noImplicitAny: setFlag,
+        noImplicitReturns: setFlag,
       },
     });
+  }
+
+  private verifyProject(args: ArgumentOptions): boolean {
+    return new Parser(this.createProject(args, false))
+      .parse()
+      .every(diagnostic => {
+        return diagnostic.getCategory() !== ts.DiagnosticCategory.Error;
+      });
   }
 }
