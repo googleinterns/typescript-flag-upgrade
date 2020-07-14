@@ -27,20 +27,20 @@ export class OutOfPlaceEmitter extends Emitter {
 
   /**
    * Sets project and output path to be emitted to.
-   * @param {Project} project - ts-morph project to be emitted.
    * @param {string} outputPath - Relative path to output directory.
    */
-  constructor(project: Project, outputPath = './ts_upgrade') {
-    super(project);
+  constructor(outputPath = './ts_upgrade') {
+    super();
     this.outputPath = outputPath;
   }
 
   /**
    * Creates output directory and copies modified source files to it.
+   * @param {Project} project - ts-morph project to be emitted.
    */
-  emit(): void {
-    const srcDirs = this.project.getRootDirectories();
-    const sourceFiles = this.project.getSourceFiles();
+  emit(project: Project): void {
+    const srcDirs = project.getRootDirectories();
+    const sourceFiles = project.getSourceFiles();
 
     srcDirs.forEach(srcDir => {
       const destDir = srcDir.createDirectory(

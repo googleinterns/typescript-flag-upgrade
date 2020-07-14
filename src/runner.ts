@@ -16,8 +16,8 @@
 
 import path from 'path';
 import _ from 'lodash';
-import {Project} from 'ts-morph';
-import {ArgumentOptions} from './types';
+import {Project, ts} from 'ts-morph';
+import {ArgumentOptions, DEFAULT_ARGS} from './types';
 import {Emitter} from './emitters/emitter';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
 import {NoImplicitAnyManipulator} from './manipulators/no_implicit_any_manipulator';
@@ -32,7 +32,6 @@ import {InPlaceEmitter} from 'src/emitters/in_place_emitter';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
-  private args?: ArgumentOptions;
   private project: Project;
 
   private parser: Parser;
@@ -59,13 +58,14 @@ export class Runner {
     manipulators?: Manipulator[],
     emitter?: Emitter
   ) {
-    if (!project && !args) {
-      throw new Error('Neither arguments nor project provided.');
+    args = args || DEFAULT_ARGS;
+    this.parser = parser || new Parser();
+    if (project) {
+      this.project = project;
+    } else {
+      this.verifyProject(args);
+      this.project = this.createProject(args);
     }
-
-    this.args = args;
-    this.project = project || this.createProject(this.args!);
-    this.parser = parser || new Parser(this.project);
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
@@ -73,7 +73,7 @@ export class Runner {
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
     ];
-    this.emitter = emitter || new InPlaceEmitter(this.project);
+    this.emitter = emitter || new InPlaceEmitter();
   }
 
   /**
@@ -87,7 +87,7 @@ export class Runner {
       })
     );
 
-    let errors = this.parser.parse();
+    let errors = this.parser.parse(this.project);
     let prevErrors = errors;
     let errorsExist;
 
@@ -98,32 +98,37 @@ export class Runner {
           manipulator.fixErrors(errors);
           errorsExist = true;
           prevErrors = errors;
-          errors = this.parser.parse();
+          errors = this.parser.parse(this.project);
           break;
         }
       }
     } while (errorsExist && !_.isEqual(errors, prevErrors));
     // TODO: Log if previous errors are same as current errors.
 
-    this.emitter.emit();
+    this.emitter.emit(this.project);
   }
 
   /**
    * Creates a ts-morph project from CLI arguments.
    * @param {ArgumentOptions} args - CLI Arguments containing project properties.
+   * @param {boolean} strictMode - If true, four strict flags are set to true.
    * @return {Project} Created project.
    */
-  private createProject(args: ArgumentOptions): Project {
-    if (args.i) {
-      const project = new Project({
-        tsConfigFilePath: path.join(process.cwd(), args.p),
-        addFilesFromTsConfig: false,
-        compilerOptions: {
+  private createProject(args: ArgumentOptions, strictMode = true): Project {
+    const setCompilerOptions = strictMode
+      ? {
           strictNullChecks: true,
           strictPropertyInitialization: true,
           noImplicitAny: true,
           noImplicitReturns: true,
-        },
+        }
+      : undefined;
+
+    if (args.i) {
+      const project = new Project({
+        tsConfigFilePath: path.join(process.cwd(), args.p),
+        addFilesFromTsConfig: false,
+        compilerOptions: setCompilerOptions,
       });
 
       project.addSourceFilesAtPaths(
@@ -136,12 +141,23 @@ export class Runner {
 
     return new Project({
       tsConfigFilePath: path.join(process.cwd(), args.p),
-      compilerOptions: {
-        strictNullChecks: true,
-        strictPropertyInitialization: true,
-        noImplicitAny: true,
-        noImplicitReturns: true,
-      },
+      compilerOptions: setCompilerOptions,
     });
+  }
+
+  /**
+   * Verifies that the project user passes in through CLI compiles initially with flags set to false.
+   * @param {ArgumentOptions} args - CLI Arguments containing project properties.
+   */
+  private verifyProject(args: ArgumentOptions): void {
+    if (
+      !this.parser.parse(this.createProject(args, false)).every(diagnostic => {
+        return diagnostic.getCategory() !== ts.DiagnosticCategory.Error;
+      })
+    ) {
+      throw new Error(
+        'Project not current compiling with original tsconfig flags.'
+      );
+    }
   }
 }

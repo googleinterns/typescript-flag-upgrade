@@ -62,7 +62,7 @@ describe('Runner', () => {
       /* parser */ undefined,
       errorDetector,
       [new NoImplicitReturnsManipulator(errorDetector)],
-      new OutOfPlaceEmitter(project, relativeOutputPath)
+      new OutOfPlaceEmitter(relativeOutputPath)
     ).run();
 
     const expectedOutputs = project.addSourceFilesAtPaths(

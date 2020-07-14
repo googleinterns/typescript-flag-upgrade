@@ -18,18 +18,9 @@ import {Project} from 'ts-morph';
 
 /** Base class for emitting modified TypeScript files. */
 export abstract class Emitter {
-  project: Project;
-
-  /**
-   * Sets project to be emitted.
-   * @param {Project} project - ts-morph project to be emitted.
-   */
-  constructor(project: Project) {
-    this.project = project;
-  }
-
   /**
    * Emits project, implemented by subclasses.
+   * @param {Project} project - ts-morph project to be emitted.
    */
-  emit(): void {}
+  abstract emit(project: Project): void;
 }

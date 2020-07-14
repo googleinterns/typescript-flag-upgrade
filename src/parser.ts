@@ -18,13 +18,9 @@ import {Diagnostic, ts, Project} from 'ts-morph';
 
 /** Class for parsing a project and returning diagnostics. */
 export class Parser {
-  private project: Project;
+  constructor() {}
 
-  constructor(project: Project) {
-    this.project = project;
-  }
-
-  parse(): Diagnostic<ts.Diagnostic>[] {
-    return this.project.getPreEmitDiagnostics();
+  parse(project: Project): Diagnostic<ts.Diagnostic>[] {
+    return project.getPreEmitDiagnostics();
   }
 }

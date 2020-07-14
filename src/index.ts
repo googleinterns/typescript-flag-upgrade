@@ -18,13 +18,14 @@
 
 import yargs from 'yargs';
 import {Runner} from './runner';
+import {DEFAULT_ARGS} from './types';
 
 const args = yargs
   .options({
     p: {
       alias: 'project',
       demandOption: true,
-      default: 'tsconfig.json',
+      default: DEFAULT_ARGS.p,
       description:
         'Relative path to TypeScript config file (eg. "./dir/tsconfig.json")',
       normalize: true,
@@ -33,7 +34,7 @@ const args = yargs
     m: {
       alias: 'mode',
       demandOption: true,
-      default: 'all',
+      default: DEFAULT_ARGS.m,
       description:
         "Option between only leaving comments ('comment') or both comments and mutative fixes ('all')",
       type: 'string',
