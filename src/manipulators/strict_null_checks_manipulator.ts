@@ -189,12 +189,24 @@ export class StrictNullChecksManipulator extends Manipulator {
       if (!_.isEqual(oldTypes, newTypes)) {
         const newDeclaration = declaration.setType(newTypes.join(' | '));
 
-        const modifiedStatement = this.getModifiedStatement(newDeclaration);
-        if (modifiedStatement) {
-          this.addModifiedStatement(
-            modifiedStatementedNodes,
-            modifiedStatement
+        if (
+          (Node.isPropertyDeclaration(newDeclaration) ||
+            Node.isPropertySignature(newDeclaration)) &&
+          this.verifyCommentRange(newDeclaration)
+        ) {
+          newDeclaration.replaceWithText(
+            `${STRICT_NULL_CHECKS_COMMENT}\n${newDeclaration
+              .getFullText()
+              .trimLeft()}`
           );
+        } else {
+          const modifiedStatement = this.getModifiedStatement(newDeclaration);
+          if (modifiedStatement) {
+            this.addModifiedStatement(
+              modifiedStatementedNodes,
+              modifiedStatement
+            );
+          }
         }
       }
     });
@@ -531,12 +543,16 @@ export class StrictNullChecksManipulator extends Manipulator {
     if (
       parent &&
       Node.isStatementedNode(parent) &&
-      !statement.getLeadingCommentRanges().some(commentRange => {
-        return commentRange.getText().includes(STRICT_NULL_CHECKS_COMMENT);
-      })
+      this.verifyCommentRange(statement)
     ) {
       statementedNotes.add([parent, statement.getChildIndex()]);
     }
+  }
+
+  private verifyCommentRange(node: Node<ts.Node>): boolean {
+    return !node.getLeadingCommentRanges().some(commentRange => {
+      return commentRange.getText().includes(STRICT_NULL_CHECKS_COMMENT);
+    });
   }
 
   /**
