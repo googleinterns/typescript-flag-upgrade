@@ -19,38 +19,35 @@ import {Runner} from 'src/runner';
 import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
 import {SourceFileComparer} from 'testing/source_file_matcher';
 import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
-import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks_manipulator';
+import {NoImplicitReturnsManipulator} from '@/src/manipulators/no_implicit_returns_manipulator';
 
 describe('Runner', () => {
   beforeAll(() => {
     jasmine.addMatchers(SourceFileComparer);
   });
 
-  it('should fix strictNullChecks', () => {
+  it('should fix noImplicitReturns', () => {
     const relativeOutputPath = './ts_upgrade';
     const inputConfigPath = './test/test_files/tsconfig.json';
 
     const inputFilePaths = [
-      './test/test_files/strict_null_checks/object_possibly_null.ts',
-      './test/test_files/strict_null_checks/unassignable_argument_type.ts',
-      './test/test_files/strict_null_checks/unassignable_variable_type.ts',
+      './test/test_files/no_implicit_returns/no_return.ts',
+      './test/test_files/no_implicit_returns/empty_return.ts',
     ];
     const actualOutputFilePaths = [
-      './test/test_files/strict_null_checks/ts_upgrade/object_possibly_null.ts',
-      './test/test_files/strict_null_checks/ts_upgrade/unassignable_argument_type.ts',
-      './test/test_files/strict_null_checks/ts_upgrade/unassignable_variable_type.ts',
+      './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
+      './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
     ];
     const expectedOutputFilePaths = [
-      './test/test_files/golden/strict_null_checks/object_possibly_null.ts',
-      './test/test_files/golden/strict_null_checks/unassignable_argument_type.ts',
-      './test/test_files/golden/strict_null_checks/unassignable_variable_type.ts',
+      './test/test_files/golden/no_implicit_returns/no_return.ts',
+      './test/test_files/golden/no_implicit_returns/empty_return.ts',
     ];
 
     const project = new Project({
       tsConfigFilePath: inputConfigPath,
       addFilesFromTsConfig: false,
       compilerOptions: {
-        strictNullChecks: true,
+        noImplicitReturns: true,
       },
     });
 
@@ -64,7 +61,7 @@ describe('Runner', () => {
       project,
       /* parser */ undefined,
       errorDetector,
-      [new StrictNullChecksManipulator(errorDetector)],
+      [new NoImplicitReturnsManipulator(errorDetector)],
       new OutOfPlaceEmitter(project, relativeOutputPath)
     ).run();
 
