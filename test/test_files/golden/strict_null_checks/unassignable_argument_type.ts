@@ -28,3 +28,9 @@ function addToEmptyList() {
   const emptyList: any[] = [];
   emptyList.push(5);
 }
+
+// Test: No overload matches
+function noOverloadMatches(n: number | undefined) {
+  // typescript-flag-upgrade automated fix: --strictNullChecks
+  new Date(n!);
+}

@@ -28,3 +28,9 @@ function addToEmptyList() {
   const emptyList = [];
   emptyList.push(5);
 }
+
+// Test: No overload matches
+function noOverloadMatches(n: number | undefined) {
+  // Fix: new Date(n!);
+  new Date(n);
+}

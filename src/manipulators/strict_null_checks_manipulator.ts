@@ -53,6 +53,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         ErrorCodes.ObjectPossiblyNullOrUndefined,
         ErrorCodes.TypeANotAssignableToTypeB,
         ErrorCodes.ArgumentNotAssignableToParameter,
+        ErrorCodes.NoOverloadMatches,
       ])
     );
     this.nodeKinds = new Set<SyntaxKind>([
@@ -119,7 +120,8 @@ export class StrictNullChecksManipulator extends Manipulator {
         }
 
         // When argument and parameter types are not assignable to each other
-        case ErrorCodes.ArgumentNotAssignableToParameter: {
+        case ErrorCodes.ArgumentNotAssignableToParameter:
+        case ErrorCodes.NoOverloadMatches: {
           this.handleNonAssignableArgumentTypes(
             errorNode,
             diagnostic,
