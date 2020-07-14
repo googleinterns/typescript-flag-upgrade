@@ -17,7 +17,7 @@
 import {Manipulator} from './manipulator';
 import {Diagnostic, ts, SyntaxKind, Node, Identifier} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
-import {ErrorCodes} from '../types';
+import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from 'src/types';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
@@ -78,8 +78,32 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
 
     modifiedIdentifiers.forEach(identifier => {
       if (!identifier.getType().getText().includes('undefined')) {
-        identifier.replaceWithText(identifier.getText() + '?');
+        const newIdentifier = identifier.replaceWithText(
+          `${identifier.getFullText().trim()}?`
+        );
+
+        const parent = newIdentifier.getParent();
+        if (
+          parent &&
+          (Node.isPropertyDeclaration(parent) ||
+            Node.isPropertySignature(parent)) &&
+          this.verifyCommentRange(parent)
+        ) {
+          parent.replaceWithText(
+            `${STRICT_PROPERTY_INITIALIZATION_COMMENT}\n${parent
+              .getFullText()
+              .trimLeft()}`
+          );
+        }
       }
+    });
+  }
+
+  private verifyCommentRange(node: Node<ts.Node>): boolean {
+    return !node.getLeadingCommentRanges().some(commentRange => {
+      return commentRange
+        .getText()
+        .includes(STRICT_PROPERTY_INITIALIZATION_COMMENT);
     });
   }
 }
