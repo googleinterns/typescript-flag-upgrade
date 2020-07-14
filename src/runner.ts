@@ -17,7 +17,7 @@
 import path from 'path';
 import _ from 'lodash';
 import {Project, ts} from 'ts-morph';
-import {ArgumentOptions} from './types';
+import {ArgumentOptions, DEFAULT_ARGS} from './types';
 import {Emitter} from './emitters/emitter';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
 import {NoImplicitAnyManipulator} from './manipulators/no_implicit_any_manipulator';
@@ -58,17 +58,14 @@ export class Runner {
     manipulators?: Manipulator[],
     emitter?: Emitter
   ) {
+    args = args || DEFAULT_ARGS;
     this.parser = parser || new Parser();
-
     if (project) {
       this.project = project;
-    } else if (args) {
+    } else {
       this.verifyProject(args);
       this.project = this.createProject(args);
-    } else {
-      throw new Error('Neither arguments nor project provided.');
     }
-
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
@@ -114,20 +111,24 @@ export class Runner {
   /**
    * Creates a ts-morph project from CLI arguments.
    * @param {ArgumentOptions} args - CLI Arguments containing project properties.
-   * @param {boolean} setFlag - Whether the flags should be set in the project or not.
+   * @param {boolean} strictMode - If true, four strict flags are set to true.
    * @return {Project} Created project.
    */
-  private createProject(args: ArgumentOptions, setFlag = true): Project {
+  private createProject(args: ArgumentOptions, strictMode = true): Project {
+    const setCompilerOptions = strictMode
+      ? {
+          strictNullChecks: true,
+          strictPropertyInitialization: true,
+          noImplicitAny: true,
+          noImplicitReturns: true,
+        }
+      : undefined;
+
     if (args.i) {
       const project = new Project({
         tsConfigFilePath: path.join(process.cwd(), args.p),
         addFilesFromTsConfig: false,
-        compilerOptions: {
-          strictNullChecks: setFlag,
-          strictPropertyInitialization: setFlag,
-          noImplicitAny: setFlag,
-          noImplicitReturns: setFlag,
-        },
+        compilerOptions: setCompilerOptions,
       });
 
       project.addSourceFilesAtPaths(
@@ -140,12 +141,7 @@ export class Runner {
 
     return new Project({
       tsConfigFilePath: path.join(process.cwd(), args.p),
-      compilerOptions: {
-        strictNullChecks: setFlag,
-        strictPropertyInitialization: setFlag,
-        noImplicitAny: setFlag,
-        noImplicitReturns: setFlag,
-      },
+      compilerOptions: setCompilerOptions,
     });
   }
 
@@ -159,7 +155,9 @@ export class Runner {
         return diagnostic.getCategory() !== ts.DiagnosticCategory.Error;
       })
     ) {
-      throw new Error('Project not current compiling with flags set to false.');
+      throw new Error(
+        'Project not current compiling with original tsconfig flags.'
+      );
     }
   }
 }

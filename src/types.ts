@@ -34,11 +34,23 @@ export type ArgumentOptions = {
    */
   m: string;
   /** Override config and specify input directory */
-  i: string | undefined;
+  i?: string;
   /** Specify file for logging */
-  l: string | undefined;
+  l?: string;
   _: string[];
   $0: string;
+};
+
+export const DEFAULT_ARGS = {
+  /** Relative path to TypeScript config file */
+  p: 'tsconfig.json',
+  /**
+   * Option between only leaving comments ('comment') or both comments and
+   * mutative fixes ('all')
+   */
+  m: 'all',
+  _: [],
+  $0: '',
 };
 
 export type NodeDiagnostic = {
