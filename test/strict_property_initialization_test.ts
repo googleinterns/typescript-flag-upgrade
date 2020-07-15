@@ -18,8 +18,9 @@ import {Project} from 'ts-morph';
 import {Runner} from 'src/runner';
 import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
 import {SourceFileComparer} from 'testing/source_file_matcher';
-import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
-import {NoImplicitReturnsManipulator} from '@/src/manipulators/no_implicit_returns_manipulator';
+import {ProdErrorDetector} from 'src/error_detectors/prod_error_detector';
+import {StrictPropertyInitializationManipulator} from '@/src/manipulators/strict_property_initialization_manipulator';
+import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks_manipulator';
 
 describe('Runner', () => {
   beforeAll(() => {
@@ -31,23 +32,24 @@ describe('Runner', () => {
     const inputConfigPath = './test/test_files/tsconfig.json';
 
     const inputFilePaths = [
-      './test/test_files/no_implicit_returns/no_return.ts',
-      './test/test_files/no_implicit_returns/empty_return.ts',
+      './test/test_files/strict_property_initialization/no_initialization.ts',
+      './test/test_files/strict_property_initialization/inherited_no_initialization.ts',
     ];
     const actualOutputFilePaths = [
-      './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
-      './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
+      './test/test_files/strict_property_initialization/ts_upgrade/no_initialization.ts',
+      './test/test_files/strict_property_initialization/ts_upgrade/inherited_no_initialization.ts',
     ];
     const expectedOutputFilePaths = [
-      './test/test_files/golden/no_implicit_returns/no_return.ts',
-      './test/test_files/golden/no_implicit_returns/empty_return.ts',
+      './test/test_files/golden/strict_property_initialization/no_initialization.ts',
+      './test/test_files/golden/strict_property_initialization/inherited_no_initialization.ts',
     ];
 
     const project = new Project({
       tsConfigFilePath: inputConfigPath,
       addFilesFromTsConfig: false,
       compilerOptions: {
-        noImplicitReturns: true,
+        strictNullChecks: true,
+        strictPropertyInitialization: true,
       },
     });
 
@@ -61,7 +63,10 @@ describe('Runner', () => {
       project,
       /* parser */ undefined,
       errorDetector,
-      [new NoImplicitReturnsManipulator(errorDetector)],
+      [
+        new StrictPropertyInitializationManipulator(errorDetector),
+        new StrictNullChecksManipulator(errorDetector),
+      ],
       new OutOfPlaceEmitter(relativeOutputPath)
     ).run();
 

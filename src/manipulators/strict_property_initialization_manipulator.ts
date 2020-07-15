@@ -79,7 +79,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
     modifiedIdentifiers.forEach(identifier => {
       if (!identifier.getType().getText().includes('undefined')) {
         const newIdentifier = identifier.replaceWithText(
-          `${identifier.getFullText().trim()}?`
+          `${identifier.getText().trim()}?`
         );
 
         const parent = newIdentifier.getParent();
@@ -91,7 +91,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
         ) {
           parent.replaceWithText(
             `${STRICT_PROPERTY_INITIALIZATION_COMMENT}\n${parent
-              .getFullText()
+              .getText()
               .trimLeft()}`
           );
         }
