@@ -166,7 +166,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         ) {
           newDeclaration.replaceWithText(
             `${STRICT_NULL_CHECKS_COMMENT}\n${newDeclaration
-              .getFullText()
+              .getText()
               .trimLeft()}`
           );
         } else {
@@ -384,7 +384,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       // Otherwise, add definite assignment assertion to the argument being passed
       // Eg. foo(n); -> foo(n!);
       if (!Node.isNonNullExpression(errorNode)) {
-        const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
+        const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
 
         const modifiedStatement = this.getModifiedStatement(newNode);
         if (modifiedStatement) {
