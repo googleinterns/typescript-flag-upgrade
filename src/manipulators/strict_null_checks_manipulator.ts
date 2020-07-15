@@ -148,37 +148,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         .sort();
 
       let newTypes = Array.from(types);
-      newTypes = newTypes
-        .filter(type => {
-          if (
-            // Eg. never[] | string[] -> string[]
-            type === 'never[]' &&
-            newTypes.some(otherType => {
-              return otherType.endsWith('[]');
-            })
-          ) {
-            return false;
-          } else if (
-            // Eg. any | string -> any
-            type !== 'any' &&
-            newTypes.some(otherType => {
-              return otherType === 'any';
-            })
-          ) {
-            return false;
-          } else if (
-            // Eg. any[] | string[] -> any[]
-            type.endsWith('[]') &&
-            type !== 'any[]' &&
-            newTypes.some(otherType => {
-              return otherType === 'any[]';
-            })
-          ) {
-            return false;
-          }
-
-          return true;
-        })
+      newTypes = this.filterUnnecessaryTypes(newTypes)
         .map(type => {
           return type.replace(new RegExp('never', 'g'), 'any');
         })
@@ -192,7 +162,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         if (
           (Node.isPropertyDeclaration(newDeclaration) ||
             Node.isPropertySignature(newDeclaration)) &&
-          this.verifyCommentRange(newDeclaration)
+          this.verifyCommentRange(newDeclaration, STRICT_NULL_CHECKS_COMMENT)
         ) {
           newDeclaration.replaceWithText(
             `${STRICT_NULL_CHECKS_COMMENT}\n${newDeclaration
@@ -543,16 +513,10 @@ export class StrictNullChecksManipulator extends Manipulator {
     if (
       parent &&
       Node.isStatementedNode(parent) &&
-      this.verifyCommentRange(statement)
+      this.verifyCommentRange(statement, STRICT_NULL_CHECKS_COMMENT)
     ) {
       statementedNotes.add([parent, statement.getChildIndex()]);
     }
-  }
-
-  private verifyCommentRange(node: Node<ts.Node>): boolean {
-    return !node.getLeadingCommentRanges().some(commentRange => {
-      return commentRange.getText().includes(STRICT_NULL_CHECKS_COMMENT);
-    });
   }
 
   /**
@@ -570,5 +534,56 @@ export class StrictNullChecksManipulator extends Manipulator {
         new Set<V>([val])
       );
     }
+  }
+
+  /**
+   * Parses through a list of types and removes unnecessary types caused by any and never.
+   * @param {string[]} types - List of types.
+   * @return {string[]} List of filtered types.
+   */
+  private filterUnnecessaryTypes(types: string[]): string[] {
+    return types.filter((type, index) => {
+      // If the current type contains "never" in a context and another type has the same
+      // context without "never", the current type is not needed
+      // Eg. never[] | string[] -> only string[] is needed
+      let startSearchNeverPos = 0;
+      let matchNeverIndex: number;
+      while (
+        (matchNeverIndex = type.indexOf('never', startSearchNeverPos)) !== -1
+      ) {
+        startSearchNeverPos = matchNeverIndex + 1;
+        return types.every(
+          (otherType, otherIndex) =>
+            otherIndex === index ||
+            !otherType.startsWith(type.substring(0, matchNeverIndex)) ||
+            !otherType.endsWith(type.substring(matchNeverIndex + 5))
+        );
+      }
+
+      // If another type contains "any" in a context, and the current type has the same
+      // context without "any", the current type is not needed
+      // Eg. any[] | string[] -> only any[] is needed
+      return types.every((otherType, otherIndex) => {
+        if (otherIndex === index) {
+          return true;
+        }
+
+        let startSearchAnyPos = 0;
+        let matchAnyIndex: number;
+        while (
+          (matchAnyIndex = otherType.indexOf('any', startSearchAnyPos)) !== -1
+        ) {
+          if (
+            type.startsWith(otherType.substring(0, matchAnyIndex)) &&
+            type.endsWith(otherType.substring(matchAnyIndex + 3))
+          ) {
+            return false;
+          }
+          startSearchAnyPos = matchAnyIndex + 1;
+        }
+
+        return true;
+      });
+    });
   }
 }
