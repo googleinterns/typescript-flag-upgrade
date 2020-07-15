@@ -50,13 +50,17 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
       this.nodeKinds
     );
 
+    // Set of identifiers of uninitialized properties to modify type declarations
     const modifiedIdentifiers = new Set<Identifier>();
 
     // Iterate through each node in reverse traversal order to prevent interference
     errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
       if (Node.isIdentifier(errorNode)) {
+        // Add all Identifier errorNodes to set of modifiedIdentifiers
         modifiedIdentifiers.add(errorNode as Identifier);
 
+        // If this property is inheritted from a superclass or interface, add
+        // all Identifers in superclasses and interfaces as well
         errorNode.findReferences().forEach(reference => {
           const declaration = reference.getDefinition().getDeclarationNode();
           if (
@@ -76,6 +80,8 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
       }
     });
 
+    // For each modifiedIdentifier, expand type declaration to include undefined
+    // Eg. property: string; => property?: string;
     modifiedIdentifiers.forEach(identifier => {
       if (!identifier.getType().getText().includes('undefined')) {
         const newIdentifier = identifier.replaceWithText(
@@ -99,6 +105,12 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
     });
   }
 
+  /**
+   * Verifies that a node hasn't been edited before by looking through leading comments and
+   * ensuring that comments weren't left by previous iterations of fixes.
+   * @param {Node<ts.Node>} node - Node to verify.
+   * @return {boolean} True if node hasn't been editted before.
+   */
   private verifyCommentRange(node: Node<ts.Node>): boolean {
     return !node.getLeadingCommentRanges().some(commentRange => {
       return commentRange
