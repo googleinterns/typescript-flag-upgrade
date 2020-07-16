@@ -115,11 +115,12 @@ describe('StrictNullChecksManipulator', () => {
       {in: ['{foo: string[]}', '{foo: any[]}'], out: ['{foo: any[]}']},
       {in: ['{foo: never[]}', '{foo: string[]}'], out: ['{foo: string[]}']},
       {in: ['string', 'any'], out: ['any']},
+      {in: ['null', 'any[]'], out: ['null', 'any[]']},
     ];
 
     for (let typeList of typeLists) {
-      expect(manipulator.filterUnnecessaryTypes(typeList.in)).toEqual(
-        typeList.out
+      expect(manipulator.filterUnnecessaryTypes(new Set(typeList.in))).toEqual(
+        new Set(typeList.out)
       );
     }
   });

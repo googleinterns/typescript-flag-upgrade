@@ -147,8 +147,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         .map(type => type.getText(declaration))
         .sort();
 
-      let newTypes = Array.from(types);
-      newTypes = this.filterUnnecessaryTypes(newTypes)
+      const newTypes = Array.from(this.filterUnnecessaryTypes(types))
         .map(type => {
           return type.replace(new RegExp('never', 'g'), 'any');
         })
@@ -541,8 +540,20 @@ export class StrictNullChecksManipulator extends Manipulator {
    * @param {string[]} types - List of types.
    * @return {string[]} List of filtered types.
    */
-  filterUnnecessaryTypes(types: string[]): string[] {
-    return types.filter((type, index) => {
+  filterUnnecessaryTypes(types: Set<string>): Set<string> {
+    if (types.has('any')) {
+      return new Set<string>(['any']);
+    }
+
+    const typeArray = Array.from(types);
+    const unnecessaryTypes = new Set<string>();
+    const newTypes = new Set<string>();
+
+    typeArray.forEach((type, index) => {
+      if (unnecessaryTypes.has(type)) {
+        return;
+      }
+
       // If the current type contains "never" in a context and another type has the same
       // context without "never", the current type is not needed
       // Eg. never[] | string[] -> only string[] is needed
@@ -552,38 +563,42 @@ export class StrictNullChecksManipulator extends Manipulator {
         (matchNeverIndex = type.indexOf('never', startSearchNeverPos)) !== -1
       ) {
         startSearchNeverPos = matchNeverIndex + 1;
-        return types.every(
-          (otherType, otherIndex) =>
-            otherIndex === index ||
-            !otherType.startsWith(type.substring(0, matchNeverIndex)) ||
-            !otherType.endsWith(type.substring(matchNeverIndex + 5))
-        );
+        typeArray.forEach((otherType, otherIndex) => {
+          if (
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchNeverIndex)) &&
+            otherType.endsWith(type.substring(matchNeverIndex + 5))
+          ) {
+            unnecessaryTypes.add(type);
+            newTypes.delete(type);
+          }
+        });
       }
 
       // If another type contains "any" in a context, and the current type has the same
       // context without "any", the current type is not needed
       // Eg. any[] | string[] -> only any[] is needed
-      return types.every((otherType, otherIndex) => {
-        if (otherIndex === index) {
-          return true;
-        }
-
-        let startSearchAnyPos = 0;
-        let matchAnyIndex: number;
-        while (
-          (matchAnyIndex = otherType.indexOf('any', startSearchAnyPos)) !== -1
-        ) {
+      let startSearchAnyPos = 0;
+      let matchAnyIndex: number;
+      while ((matchAnyIndex = type.indexOf('any', startSearchAnyPos)) !== -1) {
+        startSearchAnyPos = matchAnyIndex + 1;
+        typeArray.forEach((otherType, otherIndex) => {
           if (
-            type.startsWith(otherType.substring(0, matchAnyIndex)) &&
-            type.endsWith(otherType.substring(matchAnyIndex + 3))
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchAnyIndex)) &&
+            otherType.endsWith(type.substring(matchAnyIndex + 3))
           ) {
-            return false;
+            unnecessaryTypes.add(otherType);
+            newTypes.delete(otherType);
           }
-          startSearchAnyPos = matchAnyIndex + 1;
-        }
+        });
+      }
 
-        return true;
-      });
+      if (!unnecessaryTypes.has(type)) {
+        newTypes.add(type);
+      }
     });
+
+    return newTypes;
   }
 }
