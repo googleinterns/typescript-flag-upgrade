@@ -541,7 +541,7 @@ export class StrictNullChecksManipulator extends Manipulator {
    * @param {string[]} types - List of types.
    * @return {string[]} List of filtered types.
    */
-  private filterUnnecessaryTypes(types: string[]): string[] {
+  filterUnnecessaryTypes(types: string[]): string[] {
     return types.filter((type, index) => {
       // If the current type contains "never" in a context and another type has the same
       // context without "never", the current type is not needed
