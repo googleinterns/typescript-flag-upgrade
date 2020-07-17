@@ -70,6 +70,7 @@ export enum ErrorCodes {
   ArgumentNotAssignableToParameter = 2345,
   NoOverloadMatches = 2769,
   PropertyNoInitializer = 2564,
+  TypeImplicitlyAny = 7005,
 }
 
 export type DeclarationType = Map<

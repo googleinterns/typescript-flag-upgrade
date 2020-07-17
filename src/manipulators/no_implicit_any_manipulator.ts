@@ -15,8 +15,9 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind} from 'ts-morph';
-import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {Diagnostic, ts, SyntaxKind, Node} from 'ts-morph';
+import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorCodes} from '../types';
 
 /**
  * Manipulator that fixes for the noImplicitAny compiler flag.
@@ -26,9 +27,39 @@ export class NoImplicitAnyManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
   constructor(errorDetector: ErrorDetector) {
-    super(errorDetector, new Set<number>([]));
-    this.nodeKinds = new Set<SyntaxKind>();
+    super(
+      errorDetector,
+      new Set<number>([ErrorCodes.TypeImplicitlyAny])
+    );
+    this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);
   }
 
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {}
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+    // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
+    const errorNodes = this.errorDetector.filterDiagnosticsByKind(
+      this.errorDetector.getNodesFromDiagnostics(
+        this.errorDetector.filterDiagnosticsByCode(
+          diagnostics,
+          this.errorCodesToFix
+        )
+      ),
+      this.nodeKinds
+    );
+
+    // Iterate through each node in reverse traversal order to prevent interference.
+    errorNodes.forEach(({node: errorNode}) => {
+      const parent = errorNode.getParent();
+
+      switch (errorNode.getKind()) {
+        // When node is a function or method, add return undefined statement.
+
+        // TODO: When private members are called, cast???
+        case SyntaxKind.Identifier: {
+          if (Node.isIdentifier(errorNode) && errorNode.getText()) {
+            errorNode.findReferences();
+          }
+        }
+      }
+    });
+  }
 }
