@@ -1,9 +1,10 @@
 interface BasicInterface {}
-// typescript-flag-upgrade automated fix: --strictNullChecks
 
 class StrictNullChecksSample {
   // Test: Assign class member to null/undefined
+  // typescript-flag-upgrade automated fix: --strictNullChecks
   shouldBeNumber: null | number;
+  // typescript-flag-upgrade automated fix: --strictNullChecks
   shouldBeInterface: BasicInterface | undefined;
 
   constructor() {

@@ -14,7 +14,7 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts} from 'ts-morph';
+import {Diagnostic, ts, Node} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
@@ -45,5 +45,18 @@ export abstract class Manipulator {
    */
   hasErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): boolean {
     return this.errorDetector.detectErrors(diagnostics, this.errorCodesToFix);
+  }
+
+  /**
+   * Verifies that a node hasn't been edited before by looking through leading comments and
+   * ensuring that comments weren't left by previous iterations of fixes.
+   * @param {Node<ts.Node>} node - Node to verify.
+   * @param {string} comment - Comment to look for when parsing leading comment ranges of node.
+   * @return {boolean} True if node hasn't been editted before.
+   */
+  verifyCommentRange(node: Node<ts.Node>, comment: string): boolean {
+    return !node.getLeadingCommentRanges().some(commentRange => {
+      return commentRange.getText().includes(comment);
+    });
   }
 }

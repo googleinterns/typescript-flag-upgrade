@@ -147,38 +147,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         .map(type => type.getText(declaration))
         .sort();
 
-      let newTypes = Array.from(types);
-      newTypes = newTypes
-        .filter(type => {
-          if (
-            // Eg. never[] | string[] -> string[]
-            type === 'never[]' &&
-            newTypes.some(otherType => {
-              return otherType.endsWith('[]');
-            })
-          ) {
-            return false;
-          } else if (
-            // Eg. any | string -> any
-            type !== 'any' &&
-            newTypes.some(otherType => {
-              return otherType === 'any';
-            })
-          ) {
-            return false;
-          } else if (
-            // Eg. any[] | string[] -> any[]
-            type.endsWith('[]') &&
-            type !== 'any[]' &&
-            newTypes.some(otherType => {
-              return otherType === 'any[]';
-            })
-          ) {
-            return false;
-          }
-
-          return true;
-        })
+      const newTypes = Array.from(this.filterUnnecessaryTypes(types))
         .map(type => {
           return type.replace(new RegExp('never', 'g'), 'any');
         })
@@ -189,12 +158,24 @@ export class StrictNullChecksManipulator extends Manipulator {
       if (!_.isEqual(oldTypes, newTypes)) {
         const newDeclaration = declaration.setType(newTypes.join(' | '));
 
-        const modifiedStatement = this.getModifiedStatement(newDeclaration);
-        if (modifiedStatement) {
-          this.addModifiedStatement(
-            modifiedStatementedNodes,
-            modifiedStatement
+        if (
+          (Node.isPropertyDeclaration(newDeclaration) ||
+            Node.isPropertySignature(newDeclaration)) &&
+          this.verifyCommentRange(newDeclaration, STRICT_NULL_CHECKS_COMMENT)
+        ) {
+          newDeclaration.replaceWithText(
+            `${STRICT_NULL_CHECKS_COMMENT}\n${newDeclaration
+              .getText()
+              .trimLeft()}`
           );
+        } else {
+          const modifiedStatement = this.getModifiedStatement(newDeclaration);
+          if (modifiedStatement) {
+            this.addModifiedStatement(
+              modifiedStatementedNodes,
+              modifiedStatement
+            );
+          }
         }
       }
     });
@@ -258,10 +239,8 @@ export class StrictNullChecksManipulator extends Manipulator {
       diagnostic.getLength() === errorNode.getText().length
     ) {
       // Eg. foo.toString(); -> foo!.toString()
-      const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
-
+      const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
       const modifiedStatement = this.getModifiedStatement(newNode);
-
       this.addModifiedStatement(
         modifiedStatementedNodes,
         modifiedStatement as Statement
@@ -402,7 +381,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       // Otherwise, add definite assignment assertion to the argument being passed
       // Eg. foo(n); -> foo(n!);
       if (!Node.isNonNullExpression(errorNode)) {
-        const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
+        const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
 
         const modifiedStatement = this.getModifiedStatement(newNode);
         if (modifiedStatement) {
@@ -531,9 +510,7 @@ export class StrictNullChecksManipulator extends Manipulator {
     if (
       parent &&
       Node.isStatementedNode(parent) &&
-      !statement.getLeadingCommentRanges().some(commentRange => {
-        return commentRange.getText().includes(STRICT_NULL_CHECKS_COMMENT);
-      })
+      this.verifyCommentRange(statement, STRICT_NULL_CHECKS_COMMENT)
     ) {
       statementedNotes.add([parent, statement.getChildIndex()]);
     }
@@ -554,5 +531,78 @@ export class StrictNullChecksManipulator extends Manipulator {
         new Set<V>([val])
       );
     }
+  }
+
+  /**
+   * Parses through a list of types and removes unnecessary types caused by any and never.
+   * @param {string[]} types - List of types.
+   * @return {string[]} List of filtered types.
+   */
+  filterUnnecessaryTypes(types: Set<string>): Set<string> {
+    if (types.has('any')) {
+      return new Set<string>(['any']);
+    }
+
+    const typeArray = Array.from(types);
+    const unnecessaryTypes = new Set<string>();
+    const newTypes = new Set<string>();
+
+    typeArray.forEach((type, index) => {
+      if (unnecessaryTypes.has(type)) {
+        return;
+      }
+
+      // If the current type contains "never" in a context and another type has the same
+      // context without "never", the current type is not needed
+      // Eg. never[] | string[] -> only string[] is needed
+      // Eg. { foo: never[] } | { foo: string[] } -> only { foo: string[] } is needed
+      let startSearchNeverPos = 0;
+      let matchNeverIndex: number;
+      while (
+        (matchNeverIndex = type.indexOf('never', startSearchNeverPos)) !== -1
+      ) {
+        startSearchNeverPos = matchNeverIndex + 1;
+        typeArray.forEach((otherType, otherIndex) => {
+          // If another type has matching beginnings and endings as the current type but
+          // doesn't have "never", include the other type but not this type
+          if (
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchNeverIndex)) &&
+            otherType.endsWith(type.substring(matchNeverIndex + 5))
+          ) {
+            unnecessaryTypes.add(type);
+            newTypes.delete(type);
+          }
+        });
+      }
+
+      // If another type contains "any" in a context, and the current type has the same
+      // context without "any", the current type is not needed
+      // Eg. any[] | string[] -> only any[] is needed
+      // Eg. { foo: any[] } | { foo: string[] } -> only { foo: any[] } is needed
+      let startSearchAnyPos = 0;
+      let matchAnyIndex: number;
+      while ((matchAnyIndex = type.indexOf('any', startSearchAnyPos)) !== -1) {
+        startSearchAnyPos = matchAnyIndex + 1;
+        typeArray.forEach((otherType, otherIndex) => {
+          // If other types have matching beginnings and endings as the current type but
+          // doesn't have "any", include this type and not the other types
+          if (
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchAnyIndex)) &&
+            otherType.endsWith(type.substring(matchAnyIndex + 3))
+          ) {
+            unnecessaryTypes.add(otherType);
+            newTypes.delete(otherType);
+          }
+        });
+      }
+
+      if (!unnecessaryTypes.has(type)) {
+        newTypes.add(type);
+      }
+    });
+
+    return newTypes;
   }
 }

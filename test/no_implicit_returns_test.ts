@@ -15,65 +15,83 @@
 */
 
 import {Project} from 'ts-morph';
-import {Runner} from 'src/runner';
-import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
-import {SourceFileComparer} from 'testing/source_file_matcher';
+import {Runner} from '@/src/runner';
+import {OutOfPlaceEmitter} from '@/src/emitters/out_of_place_emitter';
+import {SourceFileComparer} from '@/testing/source_file_matcher';
 import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
 import {NoImplicitReturnsManipulator} from '@/src/manipulators/no_implicit_returns_manipulator';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {Emitter} from '@/src/emitters/emitter';
 
-describe('Runner', () => {
+describe('NoImplicitReturnsManipulator', () => {
+  let project: Project;
+  let errorDetector: ErrorDetector;
+  let emitter: Emitter;
+  let manipulator: NoImplicitReturnsManipulator;
+
   beforeAll(() => {
     jasmine.addMatchers(SourceFileComparer);
-  });
 
-  it('should fix noImplicitReturns', () => {
     const relativeOutputPath = './ts_upgrade';
     const inputConfigPath = './test/test_files/tsconfig.json';
 
-    const inputFilePaths = [
-      './test/test_files/no_implicit_returns/no_return.ts',
-      './test/test_files/no_implicit_returns/empty_return.ts',
-    ];
-    const actualOutputFilePaths = [
-      './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
-      './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
-    ];
-    const expectedOutputFilePaths = [
-      './test/test_files/golden/no_implicit_returns/no_return.ts',
-      './test/test_files/golden/no_implicit_returns/empty_return.ts',
-    ];
-
-    const project = new Project({
+    project = new Project({
       tsConfigFilePath: inputConfigPath,
       addFilesFromTsConfig: false,
       compilerOptions: {
         noImplicitReturns: true,
       },
     });
-
-    project.addSourceFilesAtPaths(inputFilePaths);
-    project.resolveSourceFileDependencies();
-
-    const errorDetector = new ProdErrorDetector();
-
-    new Runner(
-      /* args*/ undefined,
-      project,
-      /* parser */ undefined,
-      errorDetector,
-      [new NoImplicitReturnsManipulator(errorDetector)],
-      new OutOfPlaceEmitter(relativeOutputPath)
-    ).run();
-
-    const expectedOutputs = project.addSourceFilesAtPaths(
-      expectedOutputFilePaths
-    );
-    const actualOutputs = project.addSourceFilesAtPaths(actualOutputFilePaths);
-
-    expect(expectedOutputs.length).toEqual(actualOutputs.length);
-
-    for (let i = 0; i < actualOutputs.length; i++) {
-      expect(actualOutputs[i]).toHaveSameASTAs(expectedOutputs[i]);
-    }
+    errorDetector = new ProdErrorDetector();
+    emitter = new OutOfPlaceEmitter(relativeOutputPath);
+    manipulator = new NoImplicitReturnsManipulator(errorDetector);
   });
+
+  const testFiles = [
+    {
+      description: 'fixes when function is missing return statement',
+      inputFilePath: './test/test_files/no_implicit_returns/no_return.ts',
+      actualOutputFilePath:
+        './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/no_implicit_returns/no_return.ts',
+    },
+    {
+      description: 'fixes when return statement is empty',
+      inputFilePath: './test/test_files/no_implicit_returns/empty_return.ts',
+      actualOutputFilePath:
+        './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/no_implicit_returns/empty_return.ts',
+    },
+  ];
+
+  for (let test of testFiles) {
+    it(test.description, () => {
+      const input = project.addSourceFileAtPath(test.inputFilePath);
+      project.resolveSourceFileDependencies();
+
+      new Runner(
+        /* args*/ undefined,
+        project,
+        /* parser */ undefined,
+        errorDetector,
+        [manipulator],
+        emitter
+      ).run();
+
+      const expectedOutput = project.addSourceFileAtPath(
+        test.expectedOutputFilePath
+      );
+      const actualOutput = project.addSourceFileAtPath(
+        test.actualOutputFilePath
+      );
+
+      expect(actualOutput).toHaveSameASTAs(expectedOutput);
+
+      project.removeSourceFile(input);
+      project.removeSourceFile(actualOutput);
+      project.removeSourceFile(expectedOutput);
+    });
+  }
 });

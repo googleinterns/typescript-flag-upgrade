@@ -73,7 +73,11 @@ export class NoImplicitReturnsManipulator extends Manipulator {
 
         // When node is an empty return statement, replace it with return undefined.
         case SyntaxKind.ReturnStatement: {
-          if (parent && Node.isBlock(parent)) {
+          if (
+            parent &&
+            Node.isBlock(parent) &&
+            this.verifyCommentRange(errorNode, NO_IMPLICIT_RETURNS_COMMENT)
+          ) {
             const index = errorNode.getChildIndex();
             parent.removeStatement(index);
             this.addChildReturnStatement(parent);

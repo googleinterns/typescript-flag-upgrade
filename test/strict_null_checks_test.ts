@@ -15,68 +15,113 @@
 */
 
 import {Project} from 'ts-morph';
-import {Runner} from 'src/runner';
-import {OutOfPlaceEmitter} from 'src/emitters/out_of_place_emitter';
-import {SourceFileComparer} from 'testing/source_file_matcher';
+import {Runner} from '@/src/runner';
+import {OutOfPlaceEmitter} from '@/src/emitters/out_of_place_emitter';
+import {SourceFileComparer} from '@/testing/source_file_matcher';
 import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
 import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks_manipulator';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {Emitter} from '@/src/emitters/emitter';
 
-describe('Runner', () => {
+describe('StrictNullChecksManipulator', () => {
+  let project: Project;
+  let errorDetector: ErrorDetector;
+  let emitter: Emitter;
+  let manipulator: StrictNullChecksManipulator;
+
   beforeAll(() => {
     jasmine.addMatchers(SourceFileComparer);
-  });
 
-  it('should fix strictNullChecks', () => {
     const relativeOutputPath = './ts_upgrade';
     const inputConfigPath = './test/test_files/tsconfig.json';
 
-    const inputFilePaths = [
-      './test/test_files/strict_null_checks/object_possibly_null.ts',
-      './test/test_files/strict_null_checks/unassignable_argument_type.ts',
-      './test/test_files/strict_null_checks/unassignable_variable_type.ts',
-    ];
-    const actualOutputFilePaths = [
-      './test/test_files/strict_null_checks/ts_upgrade/object_possibly_null.ts',
-      './test/test_files/strict_null_checks/ts_upgrade/unassignable_argument_type.ts',
-      './test/test_files/strict_null_checks/ts_upgrade/unassignable_variable_type.ts',
-    ];
-    const expectedOutputFilePaths = [
-      './test/test_files/golden/strict_null_checks/object_possibly_null.ts',
-      './test/test_files/golden/strict_null_checks/unassignable_argument_type.ts',
-      './test/test_files/golden/strict_null_checks/unassignable_variable_type.ts',
-    ];
-
-    const project = new Project({
+    project = new Project({
       tsConfigFilePath: inputConfigPath,
       addFilesFromTsConfig: false,
       compilerOptions: {
         strictNullChecks: true,
       },
     });
+    errorDetector = new ProdErrorDetector();
+    emitter = new OutOfPlaceEmitter(relativeOutputPath);
+    manipulator = new StrictNullChecksManipulator(errorDetector);
+  });
 
-    project.addSourceFilesAtPaths(inputFilePaths);
-    project.resolveSourceFileDependencies();
+  const testFiles = [
+    {
+      description: 'fixes when object is possibly null or undefined',
+      inputFilePath:
+        './test/test_files/strict_null_checks/object_possibly_null.ts',
+      actualOutputFilePath:
+        './test/test_files/strict_null_checks/ts_upgrade/object_possibly_null.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/strict_null_checks/object_possibly_null.ts',
+    },
+    {
+      description: 'fixes when argument with unassignable type is passed',
+      inputFilePath:
+        './test/test_files/strict_null_checks/unassignable_argument_type.ts',
+      actualOutputFilePath:
+        './test/test_files/strict_null_checks/ts_upgrade/unassignable_argument_type.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/strict_null_checks/unassignable_argument_type.ts',
+    },
+    {
+      description: 'fixes when a variable is assigned an unassignable types',
+      inputFilePath:
+        './test/test_files/strict_null_checks/unassignable_variable_type.ts',
+      actualOutputFilePath:
+        './test/test_files/strict_null_checks/ts_upgrade/unassignable_variable_type.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/strict_null_checks/unassignable_variable_type.ts',
+    },
+  ];
 
-    const errorDetector = new ProdErrorDetector();
+  for (let test of testFiles) {
+    it(test.description, () => {
+      const input = project.addSourceFileAtPath(test.inputFilePath);
+      project.resolveSourceFileDependencies();
 
-    new Runner(
-      /* args*/ undefined,
-      project,
-      /* parser */ undefined,
-      errorDetector,
-      [new StrictNullChecksManipulator(errorDetector)],
-      new OutOfPlaceEmitter(relativeOutputPath)
-    ).run();
+      new Runner(
+        /* args*/ undefined,
+        project,
+        /* parser */ undefined,
+        errorDetector,
+        [manipulator],
+        emitter
+      ).run();
 
-    const expectedOutputs = project.addSourceFilesAtPaths(
-      expectedOutputFilePaths
-    );
-    const actualOutputs = project.addSourceFilesAtPaths(actualOutputFilePaths);
+      const expectedOutput = project.addSourceFileAtPath(
+        test.expectedOutputFilePath
+      );
+      const actualOutput = project.addSourceFileAtPath(
+        test.actualOutputFilePath
+      );
 
-    expect(expectedOutputs.length).toEqual(actualOutputs.length);
+      expect(actualOutput).toHaveSameASTAs(expectedOutput);
 
-    for (let i = 0; i < actualOutputs.length; i++) {
-      expect(actualOutputs[i]).toHaveSameASTAs(expectedOutputs[i]);
+      project.removeSourceFile(input);
+      project.removeSourceFile(actualOutput);
+      project.removeSourceFile(expectedOutput);
+    });
+  }
+
+  it('correctly filters unnecessary types', () => {
+    const typeLists = [
+      {in: [], out: []},
+      {in: ['string[]'], out: ['string[]']},
+      {in: ['string[]', 'any[]'], out: ['any[]']},
+      {in: ['never[]', 'string[]'], out: ['string[]']},
+      {in: ['{foo: string[]}', '{foo: any[]}'], out: ['{foo: any[]}']},
+      {in: ['{foo: never[]}', '{foo: string[]}'], out: ['{foo: string[]}']},
+      {in: ['string', 'any'], out: ['any']},
+      {in: ['null', 'any[]'], out: ['null', 'any[]']},
+    ];
+
+    for (let typeList of typeLists) {
+      expect(manipulator.filterUnnecessaryTypes(new Set(typeList.in))).toEqual(
+        new Set(typeList.out)
+      );
     }
   });
 });
