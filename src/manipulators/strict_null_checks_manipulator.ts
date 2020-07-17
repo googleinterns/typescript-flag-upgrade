@@ -16,7 +16,7 @@
 
 import _ from 'lodash';
 import {Manipulator} from './manipulator';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {
   Diagnostic,
   ts,
@@ -35,7 +35,7 @@ import {
   ErrorCodes,
   DeclarationType,
   STRICT_NULL_CHECKS_COMMENT,
-} from 'src/types';
+} from '@/src/types';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.

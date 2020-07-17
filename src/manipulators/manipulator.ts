@@ -15,7 +15,7 @@
 */
 
 import {Diagnostic, ts, Node} from 'ts-morph';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
 export abstract class Manipulator {

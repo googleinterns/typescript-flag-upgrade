@@ -16,8 +16,8 @@
 
 import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
 import {Manipulator} from './manipulator';
-import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from 'src/types';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from '@/src/types';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
