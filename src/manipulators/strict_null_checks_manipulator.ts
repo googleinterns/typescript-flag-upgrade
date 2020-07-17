@@ -557,6 +557,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       // If the current type contains "never" in a context and another type has the same
       // context without "never", the current type is not needed
       // Eg. never[] | string[] -> only string[] is needed
+      // Eg. { foo: never[] } | { foo: string[] } -> only { foo: string[] } is needed
       let startSearchNeverPos = 0;
       let matchNeverIndex: number;
       while (
@@ -564,6 +565,8 @@ export class StrictNullChecksManipulator extends Manipulator {
       ) {
         startSearchNeverPos = matchNeverIndex + 1;
         typeArray.forEach((otherType, otherIndex) => {
+          // If another type has matching beginnings and endings as the current type but
+          // doesn't have "never", include the other type but not this type
           if (
             otherIndex !== index &&
             otherType.startsWith(type.substring(0, matchNeverIndex)) &&
@@ -578,11 +581,14 @@ export class StrictNullChecksManipulator extends Manipulator {
       // If another type contains "any" in a context, and the current type has the same
       // context without "any", the current type is not needed
       // Eg. any[] | string[] -> only any[] is needed
+      // Eg. { foo: any[] } | { foo: string[] } -> only { foo: any[] } is needed
       let startSearchAnyPos = 0;
       let matchAnyIndex: number;
       while ((matchAnyIndex = type.indexOf('any', startSearchAnyPos)) !== -1) {
         startSearchAnyPos = matchAnyIndex + 1;
         typeArray.forEach((otherType, otherIndex) => {
+          // If other types have matching beginnings and endings as the current type but
+          // doesn't have "any", include this type and not the other types
           if (
             otherIndex !== index &&
             otherType.startsWith(type.substring(0, matchAnyIndex)) &&
