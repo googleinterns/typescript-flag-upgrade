@@ -58,7 +58,7 @@ describe('StrictNullChecksManipulator', () => {
         './test/test_files/golden/strict_null_checks/object_possibly_null.ts',
     },
     {
-      description: 'fixes when argument with unassignable type is passeds',
+      description: 'fixes when argument with unassignable type is passed',
       inputFilePath:
         './test/test_files/strict_null_checks/unassignable_argument_type.ts',
       actualOutputFilePath:
