@@ -54,7 +54,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
     const modifiedIdentifiers = new Set<Identifier>();
 
     // Iterate through each node in reverse traversal order to prevent interference
-    errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
+    errorNodes.forEach(({node: errorNode}) => {
       if (Node.isIdentifier(errorNode)) {
         // Add all Identifier errorNodes to set of modifiedIdentifiers
         modifiedIdentifiers.add(errorNode as Identifier);

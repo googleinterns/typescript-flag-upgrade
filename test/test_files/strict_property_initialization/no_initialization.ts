@@ -1,10 +1,12 @@
 interface BasicInterface {}
 
 class StrictPropertyInitializationComponent {
+  private assignedScalar: boolean = false;
+  private assignedInConstructorScalar: boolean;
+
   // Test: Unassigned scalar property
   // Fix: private unAssignedScalar!: boolean;
   private unAssignedScalar: boolean;
-  private assignedScalar: boolean = false;
 
   // Test: Unassigned nonscalar property: list
   // Fix: private unAssignedNonScalar!: [];
@@ -16,6 +18,7 @@ class StrictPropertyInitializationComponent {
   private unAssignedInterface: BasicInterface;
 
   constructor() {
+    this.assignedInConstructorScalar = false;
     this.takesInBoolean(this.unAssignedScalar);
   }
 
