@@ -16,8 +16,8 @@
 
 import {Manipulator} from './manipulator';
 import {Diagnostic, ts, SyntaxKind, Node, Identifier} from 'ts-morph';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
-import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from 'src/types';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from '@/src/types';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
@@ -73,7 +73,10 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
         if (
           parent &&
           Node.isPropertyDeclaration(parent) &&
-          this.verifyCommentRange(parent)
+          this.verifyCommentRange(
+            parent,
+            STRICT_PROPERTY_INITIALIZATION_COMMENT
+          )
         ) {
           parent.replaceWithText(
             `${STRICT_PROPERTY_INITIALIZATION_COMMENT}\n${parent
@@ -82,20 +85,6 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
           );
         }
       }
-    });
-  }
-
-  /**
-   * Verifies that a node hasn't been edited before by looking through leading comments and
-   * ensuring that comments weren't left by previous iterations of fixes.
-   * @param {Node<ts.Node>} node - Node to verify.
-   * @return {boolean} True if node hasn't been editted before.
-   */
-  private verifyCommentRange(node: Node<ts.Node>): boolean {
-    return !node.getLeadingCommentRanges().some(commentRange => {
-      return commentRange
-        .getText()
-        .includes(STRICT_PROPERTY_INITIALIZATION_COMMENT);
     });
   }
 }
