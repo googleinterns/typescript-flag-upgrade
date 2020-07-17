@@ -62,7 +62,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
     });
 
     // For each modifiedIdentifier, expand type declaration to include undefined
-    // Eg. property: string; => property?: string;
+    // Eg. property: string; => property!: string;
     modifiedIdentifiers.forEach(identifier => {
       if (!identifier.getType().getText().includes('undefined')) {
         const newIdentifier = identifier.replaceWithText(
