@@ -33,15 +33,12 @@ describe('Runner', () => {
 
     const inputFilePaths = [
       './test/test_files/strict_property_initialization/no_initialization.ts',
-      './test/test_files/strict_property_initialization/inherited_no_initialization.ts',
     ];
     const actualOutputFilePaths = [
       './test/test_files/strict_property_initialization/ts_upgrade/no_initialization.ts',
-      './test/test_files/strict_property_initialization/ts_upgrade/inherited_no_initialization.ts',
     ];
     const expectedOutputFilePaths = [
       './test/test_files/golden/strict_property_initialization/no_initialization.ts',
-      './test/test_files/golden/strict_property_initialization/inherited_no_initialization.ts',
     ];
 
     const project = new Project({

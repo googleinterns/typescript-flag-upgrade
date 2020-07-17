@@ -58,25 +58,6 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
       if (Node.isIdentifier(errorNode)) {
         // Add all Identifier errorNodes to set of modifiedIdentifiers
         modifiedIdentifiers.add(errorNode as Identifier);
-
-        // If this property is inheritted from a superclass or interface, add
-        // all Identifers in superclasses and interfaces as well
-        errorNode.findReferences().forEach(reference => {
-          const declaration = reference.getDefinition().getDeclarationNode();
-          if (
-            declaration &&
-            (Node.isPropertyDeclaration(declaration) ||
-              Node.isPropertySignature(declaration))
-          ) {
-            const referenceIdentifer = declaration.getFirstChildIfKind(
-              SyntaxKind.Identifier
-            );
-
-            if (referenceIdentifer) {
-              modifiedIdentifiers.add(referenceIdentifer);
-            }
-          }
-        });
       }
     });
 
@@ -85,14 +66,13 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
     modifiedIdentifiers.forEach(identifier => {
       if (!identifier.getType().getText().includes('undefined')) {
         const newIdentifier = identifier.replaceWithText(
-          `${identifier.getText().trim()}?`
+          `${identifier.getText().trim()}!`
         );
 
         const parent = newIdentifier.getParent();
         if (
           parent &&
-          (Node.isPropertyDeclaration(parent) ||
-            Node.isPropertySignature(parent)) &&
+          Node.isPropertyDeclaration(parent) &&
           this.verifyCommentRange(parent)
         ) {
           parent.replaceWithText(
