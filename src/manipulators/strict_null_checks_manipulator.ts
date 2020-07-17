@@ -239,10 +239,8 @@ export class StrictNullChecksManipulator extends Manipulator {
       diagnostic.getLength() === errorNode.getText().length
     ) {
       // Eg. foo.toString(); -> foo!.toString()
-      const newNode = errorNode.replaceWithText(errorNode.getText() + '!');
-
+      const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
       const modifiedStatement = this.getModifiedStatement(newNode);
-
       this.addModifiedStatement(
         modifiedStatementedNodes,
         modifiedStatement as Statement
