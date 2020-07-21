@@ -35,7 +35,7 @@
   },
   "homepage": "https://github.com/googleinterns/typescript-flag-upgrade#readme",
   "dependencies": {
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "path": "^0.12.7",
     "ts-morph": "^7.1.1",
     "yargs": "^15.3.1"
