@@ -15,7 +15,7 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind, Node} from 'ts-morph';
+import {Diagnostic, ts, SyntaxKind, Node, VariableDeclaration} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes} from '../types';
 
@@ -46,20 +46,48 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
+    const modifiedDeclarations = new Set<VariableDeclaration>();
+
     // Iterate through each node in reverse traversal order to prevent interference.
     errorNodes.forEach(({node: errorNode}) => {
-      const parent = errorNode.getParent();
-
-      switch (errorNode.getKind()) {
-        // When node is a function or method, add return undefined statement.
-
-        // TODO: When private members are called, cast???
-        case SyntaxKind.Identifier: {
-          if (Node.isIdentifier(errorNode) && errorNode.getText()) {
-            errorNode.findReferences();
+      if (Node.isIdentifier(errorNode)) {
+        const errorSymbol = errorNode.getSymbol();
+        const declarations = errorSymbol?.getDeclarations();
+        declarations?.forEach(declaration => {
+          if (Node.isVariableDeclaration(declaration)) {
+            modifiedDeclarations.add(declaration);
           }
-        }
+        });
       }
+    });
+
+    modifiedDeclarations.forEach(declaration => {
+      const references = declaration
+        .getFirstChildIfKind(SyntaxKind.Identifier)
+        ?.findReferencesAsNodes();
+      references?.forEach(reference => {
+        const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
+        const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
+        const nextSibling = sibling?.getNextSiblingIfKind(
+          SyntaxKind.CallExpression
+        );
+
+        if (parent && nextSibling?.getText().startsWith('TestBed.get')) {
+          const assignedIdentifiers = nextSibling
+            .getDescendantsOfKind(SyntaxKind.Identifier)
+            ?.filter(
+              identifier =>
+                identifier.getText() !== 'TestBed' &&
+                identifier.getText() !== 'get'
+            );
+
+          const assignedType = assignedIdentifiers
+            .map(identifier => identifier.getText())
+            .join(' | ');
+
+          declaration.setType(assignedType);
+        }
+      });
     });
   }
 }

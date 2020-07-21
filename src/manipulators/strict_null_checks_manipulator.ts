@@ -380,7 +380,10 @@ export class StrictNullChecksManipulator extends Manipulator {
 
       // Otherwise, add definite assignment assertion to the argument being passed
       // Eg. foo(n); -> foo(n!);
-      if (!Node.isNonNullExpression(errorNode)) {
+      if (
+        !Node.isNonNullExpression(errorNode) &&
+        !errorNode.getText().endsWith('!')
+      ) {
         const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
 
         const modifiedStatement = this.getModifiedStatement(newNode);
