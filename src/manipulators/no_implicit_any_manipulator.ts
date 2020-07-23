@@ -15,9 +15,18 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind, Node, VariableDeclaration} from 'ts-morph';
+import {
+  Diagnostic,
+  ts,
+  SyntaxKind,
+  Node,
+  VariableDeclaration,
+  Type,
+  ParameterDeclaration,
+} from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes} from '../types';
+import {Declaration} from 'typescript';
 
 /**
  * Manipulator that fixes for the noImplicitAny compiler flag.
@@ -29,7 +38,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
   constructor(errorDetector: ErrorDetector) {
     super(
       errorDetector,
-      new Set<number>([ErrorCodes.TypeImplicitlyAny])
+      new Set<number>([
+        ErrorCodes.VariableImplicitlyAny,
+        ErrorCodes.ParameterImplicitlyAny,
+      ])
     );
     this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);
   }
@@ -46,7 +58,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
-    const modifiedDeclarations = new Set<VariableDeclaration>();
+    const modifiedDeclarations = new Set<
+      VariableDeclaration | ParameterDeclaration
+    >();
 
     // Iterate through each node in reverse traversal order to prevent interference.
     errorNodes.forEach(({node: errorNode}) => {
@@ -54,40 +68,86 @@ export class NoImplicitAnyManipulator extends Manipulator {
         const errorSymbol = errorNode.getSymbol();
         const declarations = errorSymbol?.getDeclarations();
         declarations?.forEach(declaration => {
-          if (Node.isVariableDeclaration(declaration)) {
+          if (
+            Node.isVariableDeclaration(declaration) ||
+            Node.isParameterDeclaration(declaration)
+          ) {
             modifiedDeclarations.add(declaration);
           }
         });
       }
     });
 
+    const determinedTypes = new Map<
+      VariableDeclaration | ParameterDeclaration,
+      Set<Type>
+    >();
+    const dependencyGraph = new Map<
+      VariableDeclaration | ParameterDeclaration,
+      Set<VariableDeclaration | ParameterDeclaration>
+    >();
+
     modifiedDeclarations.forEach(declaration => {
-      const references = declaration
-        .getFirstChildIfKind(SyntaxKind.Identifier)
-        ?.findReferencesAsNodes();
+      console.log(
+        declaration.getFirstChildIfKind(SyntaxKind.Identifier)?.getText()
+      );
+
+      const references = declaration.findReferencesAsNodes();
+
       references?.forEach(reference => {
         const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
         const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
-        const nextSibling = sibling?.getNextSiblingIfKind(
-          SyntaxKind.CallExpression
-        );
+        const nextSibling = sibling?.getNextSibling();
 
-        if (parent && nextSibling?.getText().startsWith('TestBed.get')) {
-          const assignedIdentifiers = nextSibling
-            .getDescendantsOfKind(SyntaxKind.Identifier)
-            ?.filter(
-              identifier =>
-                identifier.getText() !== 'TestBed' &&
-                identifier.getText() !== 'get'
+        if (parent && nextSibling) {
+          if (!nextSibling.getType().isAny()) {
+            this.addToMapSet(
+              determinedTypes,
+              declaration,
+              nextSibling.getType()
             );
-
-          const assignedType = assignedIdentifiers
-            .map(identifier => identifier.getText())
-            .join(' | ');
-
-          declaration.setType(assignedType);
+          } else if (Node.isIdentifier(nextSibling)) {
+            nextSibling
+              .getSymbol()
+              ?.getDeclarations()
+              ?.forEach(assignedDeclaration => {
+                if (
+                  Node.isVariableDeclaration(assignedDeclaration) ||
+                  Node.isParameterDeclaration(assignedDeclaration)
+                ) {
+                  modifiedDeclarations.add(assignedDeclaration);
+                  this.addToMapSet(
+                    dependencyGraph,
+                    assignedDeclaration,
+                    declaration
+                  );
+                }
+              });
+          }
         }
+
+        if (Node.isParameterDeclaration(declaration)) {
+        }
+
+        //   if (parent && nextSibling?.getText().startsWith('TestBed.get')) {
+        //     const assignedIdentifiers = nextSibling
+        //       .getDescendantsOfKind(SyntaxKind.Identifier)
+        //       ?.filter(
+        //         identifier =>
+        //           identifier.getText() !== 'TestBed' &&
+        //           identifier.getText() !== 'get'
+        //       );
+
+        //     const assignedType = assignedIdentifiers
+        //       .map(identifier => identifier.getText())
+        //       .join(' | ');
+
+        //     declaration.setType(assignedType);
+        //   }
       });
     });
+
+    // Print dependency graph
+    console.log(dependencyGraph);
   }
 }

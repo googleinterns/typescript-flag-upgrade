@@ -59,4 +59,21 @@ export abstract class Manipulator {
       return commentRange.getText().includes(comment);
     });
   }
+
+  /**
+   * Adds value to a Map with Set value types.
+   * @param {Map<K, Set<V>>} map - Map to add to.
+   * @param {K} key - Key to insert value at.
+   * @param {V} val - Value to insert.
+   */
+  addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
+    if (map.has(key)) {
+      map.get(key)?.add(val);
+    } else {
+      map.set(
+        key,
+        new Set<V>([val])
+      );
+    }
+  }
 }

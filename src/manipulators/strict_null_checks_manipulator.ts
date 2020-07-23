@@ -520,23 +520,6 @@ export class StrictNullChecksManipulator extends Manipulator {
   }
 
   /**
-   * Adds value to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V} val - Value to insert.
-   */
-  private addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
-    if (map.has(key)) {
-      map.get(key)?.add(val);
-    } else {
-      map.set(
-        key,
-        new Set<V>([val])
-      );
-    }
-  }
-
-  /**
    * Parses through a list of types and removes unnecessary types caused by any and never.
    * @param {string[]} types - List of types.
    * @return {string[]} List of filtered types.

@@ -69,9 +69,9 @@ export class Runner {
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
+      new NoImplicitAnyManipulator(this.errorDetector),
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
-      new NoImplicitAnyManipulator(this.errorDetector),
     ];
     this.emitter = emitter || new InPlaceEmitter();
   }
@@ -107,7 +107,6 @@ export class Runner {
           errorsExist = true;
           prevErrors = errors;
           errors = this.parser.parse(this.project);
-          break;
         }
       }
 
