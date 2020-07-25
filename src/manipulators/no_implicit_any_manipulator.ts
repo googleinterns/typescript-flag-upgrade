@@ -20,13 +20,12 @@ import {
   ts,
   SyntaxKind,
   Node,
-  VariableDeclaration,
   Type,
+  VariableDeclaration,
   ParameterDeclaration,
 } from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes} from '../types';
-import {Declaration} from 'typescript';
 
 /**
  * Manipulator that fixes for the noImplicitAny compiler flag.
@@ -58,9 +57,8 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
-    const modifiedDeclarations = new Set<
-      VariableDeclaration | ParameterDeclaration
-    >();
+    type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
+    const modifiedDeclarations = new Set<AcceptedDeclaration>();
 
     // Iterate through each node in reverse traversal order to prevent interference.
     errorNodes.forEach(({node: errorNode}) => {
@@ -78,13 +76,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       }
     });
 
-    const determinedTypes = new Map<
-      VariableDeclaration | ParameterDeclaration,
-      Set<Type>
-    >();
+    const determinedTypes = new Map<AcceptedDeclaration, Set<Type>>();
     const dependencyGraph = new Map<
-      VariableDeclaration | ParameterDeclaration,
-      Set<VariableDeclaration | ParameterDeclaration>
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
     >();
 
     modifiedDeclarations.forEach(declaration => {

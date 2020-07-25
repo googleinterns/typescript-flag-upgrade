@@ -88,3 +88,5 @@ export const NO_IMPLICIT_RETURNS_COMMENT =
   '// typescript-flag-upgrade automated fix: --noImplicitReturns';
 export const STRICT_PROPERTY_INITIALIZATION_COMMENT =
   '// typescript-flag-upgrade automated fix: --strictPropertyInitialization';
+export const NO_IMPLICIT_ANY_COMMENT =
+  '// typescript-flag-upgrade automated fix: --noImplicitAny';
