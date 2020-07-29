@@ -107,6 +107,7 @@ export class Runner {
           errorsExist = true;
           prevErrors = errors;
           errors = this.parser.parse(this.project);
+          break;
         }
       }
 
