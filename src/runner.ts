@@ -89,11 +89,16 @@ export class Runner {
 
     let errors = this.parser.parse(this.project);
     let prevErrors = errors;
-    let errorsExist;
+    let errorsExist: boolean;
+    let rotatedManipulators: Manipulator[];
 
     do {
       errorsExist = false;
+      rotatedManipulators = [...this.manipulators];
+
       for (const manipulator of this.manipulators) {
+        rotatedManipulators.push(rotatedManipulators.shift()!);
+
         if (manipulator.hasErrors(errors)) {
           manipulator.fixErrors(errors);
           errorsExist = true;
@@ -102,6 +107,8 @@ export class Runner {
           break;
         }
       }
+
+      this.manipulators = rotatedManipulators;
     } while (errorsExist && !_.isEqual(errors, prevErrors));
     // TODO: Log if previous errors are same as current errors.
 
