@@ -27,6 +27,8 @@ import {
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes} from '../types';
 
+type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
+
 /**
  * Manipulator that fixes for the noImplicitAny compiler flag.
  * @extends {Manipulator}
@@ -57,10 +59,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
-    type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
     const modifiedDeclarations = new Set<AcceptedDeclaration>();
 
-    // Iterate through each node in reverse traversal order to prevent interference.
+    // Iterate through each node, adding declarations to a set.
     errorNodes.forEach(({node: errorNode}) => {
       if (Node.isIdentifier(errorNode)) {
         const errorSymbol = errorNode.getSymbol();
@@ -83,66 +84,189 @@ export class NoImplicitAnyManipulator extends Manipulator {
     >();
 
     modifiedDeclarations.forEach(declaration => {
-      console.log(
-        declaration.getFirstChildIfKind(SyntaxKind.Identifier)?.getText()
-      );
+      if (Node.isParameterDeclaration(declaration)) {
+        // Get the parent function declaration
+        const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
+          SyntaxKind.FunctionDeclaration
+        );
+
+        // Get index of parameter declaration
+        const parameterIndex = parentFunctionDeclaration
+          ?.getParameters()
+          ?.indexOf(declaration);
+
+        // Search for function call references
+        const functionReferences = parentFunctionDeclaration?.findReferencesAsNodes();
+        functionReferences?.forEach(functionReference => {
+          // In call reference, get arguments in those calls
+          const args = functionReference
+            .getParentIfKind(SyntaxKind.CallExpression)
+            ?.getArguments();
+
+          // Add corresponding argument's declaration to the dependency graph
+          if (
+            args &&
+            parameterIndex !== undefined &&
+            args.length > parameterIndex
+          ) {
+            const correspondingArg = args[parameterIndex];
+            this.addToDependencyGraph(
+              dependencyGraph,
+              determinedTypes,
+              modifiedDeclarations,
+              correspondingArg,
+              declaration
+            );
+          }
+        });
+      }
 
       const references = declaration.findReferencesAsNodes();
-
       references?.forEach(reference => {
         const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
         const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
         const nextSibling = sibling?.getNextSibling();
 
         if (parent && nextSibling) {
-          if (!nextSibling.getType().isAny()) {
-            this.addToMapSet(
-              determinedTypes,
-              declaration,
-              nextSibling.getType()
-            );
-          } else if (Node.isIdentifier(nextSibling)) {
-            nextSibling
-              .getSymbol()
-              ?.getDeclarations()
-              ?.forEach(assignedDeclaration => {
-                if (
-                  Node.isVariableDeclaration(assignedDeclaration) ||
-                  Node.isParameterDeclaration(assignedDeclaration)
-                ) {
-                  modifiedDeclarations.add(assignedDeclaration);
-                  this.addToMapSet(
-                    dependencyGraph,
-                    assignedDeclaration,
-                    declaration
-                  );
-                }
-              });
-          }
+          this.addToDependencyGraph(
+            dependencyGraph,
+            determinedTypes,
+            modifiedDeclarations,
+            nextSibling,
+            declaration
+          );
         }
-
-        if (Node.isParameterDeclaration(declaration)) {
-        }
-
-        //   if (parent && nextSibling?.getText().startsWith('TestBed.get')) {
-        //     const assignedIdentifiers = nextSibling
-        //       .getDescendantsOfKind(SyntaxKind.Identifier)
-        //       ?.filter(
-        //         identifier =>
-        //           identifier.getText() !== 'TestBed' &&
-        //           identifier.getText() !== 'get'
-        //       );
-
-        //     const assignedType = assignedIdentifiers
-        //       .map(identifier => identifier.getText())
-        //       .join(' | ');
-
-        //     declaration.setType(assignedType);
-        //   }
       });
     });
 
-    // Print dependency graph
-    console.log(dependencyGraph);
+    const sortedDeclarations = this.topoSort(
+      modifiedDeclarations,
+      dependencyGraph
+    );
+
+    const skipDeclarations = new Set<AcceptedDeclaration>();
+
+    sortedDeclarations?.forEach(declaration => {
+      if (skipDeclarations.has(declaration)) {
+        return;
+      }
+
+      if (!determinedTypes.has(declaration)) {
+        console.log(`Couldn't determine type of ${declaration.getText()}`);
+        dependencyGraph
+          .get(declaration)
+          ?.forEach(successor => skipDeclarations.add(successor));
+        return;
+      }
+
+      dependencyGraph.get(declaration)?.forEach(successor => {
+        determinedTypes.get(declaration)!.forEach(determinedType => {
+          this.addToMapSet(determinedTypes, successor, determinedType);
+        });
+      });
+
+      declaration.setType(
+        Array.from(determinedTypes.get(declaration)!)
+          .map(type => type.getText(declaration))
+          .sort()
+          .join(' | ')
+      );
+    });
+
+    // // Print dependency graph
+    // for (const [key, val] of dependencyGraph) {
+    //   console.log(key.getText());
+    //   val.forEach(v => console.log(v.getText()));
+    //   console.log();
+    // }
+
+    // console.log('---');
+
+    // for (const [key, val] of determinedTypes) {
+    //   console.log(key.getText());
+    //   val.forEach(v => console.log(v.getText()));
+    //   console.log();
+    // }
+
+    // console.log('---');
+
+    // for (const key of modifiedDeclarations) {
+    //   console.log(key.getText());
+    // }
+  }
+
+  private addToDependencyGraph(
+    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    modifiedDeclarations: Set<AcceptedDeclaration>,
+    predecessor: Node<ts.Node>,
+    successor: AcceptedDeclaration
+  ): void {
+    const determinedType = this.toTypeList(predecessor.getType());
+
+    if (determinedType.some(type => type.isAny())) {
+      if (Node.isIdentifier(predecessor)) {
+        predecessor
+          .getSymbol()
+          ?.getDeclarations()
+          ?.forEach(assignedDeclaration => {
+            if (
+              Node.isVariableDeclaration(assignedDeclaration) ||
+              Node.isParameterDeclaration(assignedDeclaration)
+            ) {
+              modifiedDeclarations.add(assignedDeclaration);
+              this.addToMapSet(dependencyGraph, assignedDeclaration, successor);
+            }
+          });
+      }
+    } else {
+      determinedType.forEach(type => {
+        this.addToMapSet(determinedTypes, successor, type);
+      });
+    }
+  }
+
+  topoSort<T>(vertices: Set<T>, graph: Map<T, Set<T>>): T[] | undefined {
+    const sorted: T[] = [];
+    const numDependencies = new Map<T, number>();
+
+    for (const vertex of vertices) {
+      numDependencies.set(vertex, 0);
+    }
+
+    for (const successors of graph.values()) {
+      successors.forEach(successor => {
+        numDependencies.set(
+          successor,
+          (numDependencies.get(successor) || 0) + 1
+        );
+      });
+    }
+
+    const queue: T[] = [];
+
+    for (const vertex of numDependencies.keys()) {
+      if (numDependencies.get(vertex) === 0) {
+        queue.push(vertex);
+      }
+    }
+
+    while (queue.length > 0) {
+      const currVertex = queue.shift()!;
+      sorted.push(currVertex);
+
+      graph.get(currVertex)?.forEach(successor => {
+        numDependencies.set(successor, numDependencies.get(successor)! - 1);
+        if (numDependencies.get(successor) === 0) {
+          queue.push(successor);
+        }
+      });
+    }
+
+    if (sorted.length !== vertices.size) {
+      return undefined;
+    }
+
+    return sorted;
   }
 }

@@ -14,7 +14,7 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, Node} from 'ts-morph';
+import {Diagnostic, ts, Node, Type} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
@@ -75,5 +75,18 @@ export abstract class Manipulator {
         new Set<V>([val])
       );
     }
+  }
+
+  /**
+   * Converts a Union type into a list of base types, if applicable.
+   * @param {Type} type - Input type.
+   * @return {Type[]} List of types represented by input type.
+   */
+  toTypeList(type: Type): Type[] {
+    return type.isUnion()
+      ? type.getUnionTypes().map(individualType => {
+          return individualType.getBaseTypeOfLiteralType();
+        })
+      : [type.getBaseTypeOfLiteralType()];
   }
 }

@@ -16,6 +16,7 @@
 
 import {Project} from 'ts-morph';
 import {Runner} from '@/src/runner';
+import _ from 'lodash';
 import {OutOfPlaceEmitter} from '@/src/emitters/out_of_place_emitter';
 import {SourceFileComparer} from '@/testing/source_file_matcher';
 import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
@@ -23,7 +24,7 @@ import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Emitter} from '@/src/emitters/emitter';
 import {NoImplicitAnyManipulator} from '@/src/manipulators/no_implicit_any_manipulator';
 
-describe('NoImplicitAnyManipulator', () => {
+describe('NoImplicitAnyManipulator ', () => {
   let project: Project;
   let errorDetector: ErrorDetector;
   let emitter: Emitter;
@@ -39,7 +40,7 @@ describe('NoImplicitAnyManipulator', () => {
       tsConfigFilePath: inputConfigPath,
       addFilesFromTsConfig: false,
       compilerOptions: {
-        noImplicitReturns: true,
+        noImplicitAny: true,
       },
     });
     errorDetector = new ProdErrorDetector();
@@ -56,42 +57,74 @@ describe('NoImplicitAnyManipulator', () => {
       expectedOutputFilePath:
         './test/test_files/golden/no_implicit_returns/no_return.ts',
     },
-    {
-      description: 'fixes when return statement is empty',
-      inputFilePath: './test/test_files/no_implicit_returns/empty_return.ts',
-      actualOutputFilePath:
-        './test/test_files/no_implicit_returns/ts_upgrade/empty_return.ts',
-      expectedOutputFilePath:
-        './test/test_files/golden/no_implicit_returns/empty_return.ts',
-    },
   ];
 
-  for (let test of testFiles) {
-    it(test.description, () => {
-      const input = project.addSourceFileAtPath(test.inputFilePath);
-      project.resolveSourceFileDependencies();
+  // for (let test of testFiles) {
+  //   it(test.description, () => {
+  //     const input = project.addSourceFileAtPath(test.inputFilePath);
+  //     project.resolveSourceFileDependencies();
 
-      new Runner(
-        /* args*/ undefined,
-        project,
-        /* parser */ undefined,
-        errorDetector,
-        [manipulator],
-        emitter
-      ).run();
+  //     new Runner(
+  //       /* args*/ undefined,
+  //       project,
+  //       /* parser */ undefined,
+  //       errorDetector,
+  //       [manipulator],
+  //       emitter
+  //     ).run();
 
-      const expectedOutput = project.addSourceFileAtPath(
-        test.expectedOutputFilePath
-      );
-      const actualOutput = project.addSourceFileAtPath(
-        test.actualOutputFilePath
-      );
+  //     const expectedOutput = project.addSourceFileAtPath(
+  //       test.expectedOutputFilePath
+  //     );
+  //     const actualOutput = project.addSourceFileAtPath(
+  //       test.actualOutputFilePath
+  //     );
 
-      expect(actualOutput).toHaveSameASTAs(expectedOutput);
+  //     expect(actualOutput).toHaveSameASTAs(expectedOutput);
 
-      project.removeSourceFile(input);
-      project.removeSourceFile(actualOutput);
-      project.removeSourceFile(expectedOutput);
-    });
-  }
+  //     project.removeSourceFile(input);
+  //     project.removeSourceFile(actualOutput);
+  //     project.removeSourceFile(expectedOutput);
+  //   });
+  // }
+
+  it('topologically sorts graph', () => {
+    const basicGraph = {
+      vertices: new Set(['x', 'y', 'z', 'w']),
+      edges: new Map([
+        ['x', new Set(['y', 'z'])],
+        ['y', new Set(['z', 'w'])],
+      ]),
+      sorted: [
+        ['x', 'y', 'z', 'w'],
+        ['x', 'y', 'w', 'z'],
+      ],
+    };
+
+    expect(
+      manipulator.topoSort(basicGraph.vertices, basicGraph.edges)
+    ).toBeDefined();
+    expect(
+      basicGraph.sorted.some(expectedOut =>
+        _.isEqual(
+          expectedOut,
+          manipulator.topoSort(basicGraph.vertices, basicGraph.edges)
+        )
+      )
+    ).toBeTrue();
+
+    const cycleGraph = {
+      vertices: new Set(['x', 'y', 'z', 'w']),
+      edges: new Map([
+        ['x', new Set(['y'])],
+        ['y', new Set(['z'])],
+        ['z', new Set(['w'])],
+        ['w', new Set(['y'])],
+      ]),
+    };
+
+    expect(
+      manipulator.topoSort(cycleGraph.vertices, cycleGraph.edges)
+    ).toBeUndefined();
+  });
 });

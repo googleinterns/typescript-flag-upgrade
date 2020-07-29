@@ -417,19 +417,6 @@ export class StrictNullChecksManipulator extends Manipulator {
   }
 
   /**
-   * Converts a Union type into a list of base types, if applicable.
-   * @param {Type} type - Input type.
-   * @return {Type[]} List of types represented by input type.
-   */
-  private toTypeList(type: Type): Type[] {
-    return type.isUnion()
-      ? type.getUnionTypes().map(individualType => {
-          return individualType.getBaseTypeOfLiteralType();
-        })
-      : [type.getBaseTypeOfLiteralType()];
-  }
-
-  /**
    * Traverses through a node's ancestor and returns the closest Statement node.
    * @param {Node<ts.Node>} node - Modified node.
    * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
