@@ -417,17 +417,6 @@ export class StrictNullChecksManipulator extends Manipulator {
   }
 
   /**
-   * Traverses through a node's ancestor and returns the closest Statement node.
-   * @param {Node<ts.Node>} node - Modified node.
-   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
-   */
-  private getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
-    return node.getParentWhile((parent, child) => {
-      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
-    }) as Statement;
-  }
-
-  /**
    * Returns list of array declarations with type never[].
    * @param {SourceFile} sourceFile - Source file to search through.
    * @return {Set<Node<ts.Node>>} Set of array declarations with type never[].

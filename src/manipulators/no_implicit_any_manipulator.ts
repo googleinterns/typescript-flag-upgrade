@@ -25,7 +25,7 @@ import {
   ParameterDeclaration,
 } from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
-import {ErrorCodes} from '../types';
+import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT} from '../types';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -47,6 +47,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
     this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);
   }
 
+  /**
+   * Manipulates AST of project to fix for the noImplicitAny compiler flag given diagnostics.
+   * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
+   */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
     const errorNodes = this.errorDetector.filterDiagnosticsByKind(
@@ -59,9 +63,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
+    // Set of declarations with implicit any type.
     const modifiedDeclarations = new Set<AcceptedDeclaration>();
 
-    // Iterate through each node, adding declarations to a set.
+    // Iterate through each node, adding declarations to set.
     errorNodes.forEach(({node: errorNode}) => {
       if (Node.isIdentifier(errorNode)) {
         const errorSymbol = errorNode.getSymbol();
@@ -77,13 +82,17 @@ export class NoImplicitAnyManipulator extends Manipulator {
       }
     });
 
+    // Map from declaration to calculated type of declaration.
     const determinedTypes = new Map<AcceptedDeclaration, Set<Type>>();
+
+    // Graph of dependencies between declarations.
     const dependencyGraph = new Map<
       AcceptedDeclaration,
       Set<AcceptedDeclaration>
     >();
 
     modifiedDeclarations.forEach(declaration => {
+      // For parameter declarations, go though each call expression of the parent function.
       if (Node.isParameterDeclaration(declaration)) {
         // Get the parent function declaration
         const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
@@ -110,7 +119,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
             args.length > parameterIndex
           ) {
             const correspondingArg = args[parameterIndex];
-            this.addToDependencyGraph(
+            this.addDependency(
               dependencyGraph,
               determinedTypes,
               modifiedDeclarations,
@@ -121,14 +130,16 @@ export class NoImplicitAnyManipulator extends Manipulator {
         });
       }
 
+      // For all declarations, find assignment references.
       const references = declaration.findReferencesAsNodes();
       references?.forEach(reference => {
         const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
         const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
         const nextSibling = sibling?.getNextSibling();
 
+        // Add assigned value's declaration to the dependency graph
         if (parent && nextSibling) {
-          this.addToDependencyGraph(
+          this.addDependency(
             dependencyGraph,
             determinedTypes,
             modifiedDeclarations,
@@ -139,71 +150,104 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     });
 
+    // Topologically sort the dependency graph to determine order to expand declarations.
     const sortedDeclarations = this.topoSort(
       modifiedDeclarations,
       dependencyGraph
     );
 
+    // Set of declarations to skip because its predecessor had type any.
     const skipDeclarations = new Set<AcceptedDeclaration>();
 
-    sortedDeclarations?.forEach(declaration => {
+    sortedDeclarations.forEach(declaration => {
+      // If declaration is skipped, also skip its successors.
       if (skipDeclarations.has(declaration)) {
-        return;
-      }
-
-      if (!determinedTypes.has(declaration)) {
-        console.log(`Couldn't determine type of ${declaration.getText()}`);
         dependencyGraph
           .get(declaration)
           ?.forEach(successor => skipDeclarations.add(successor));
         return;
       }
 
+      // If declaration has type any, output to user and skip successors.
+      if (!determinedTypes.has(declaration)) {
+        console.log(
+          `${declaration
+            .getSourceFile()
+            .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Unable to automatically determined type.`
+        );
+        dependencyGraph
+          .get(declaration)
+          ?.forEach(successor => skipDeclarations.add(successor));
+        return;
+      }
+
+      // If declaration has determined type, also give successors the determined type.
       dependencyGraph.get(declaration)?.forEach(successor => {
         determinedTypes.get(declaration)!.forEach(determinedType => {
           this.addToMapSet(determinedTypes, successor, determinedType);
         });
       });
 
-      declaration.setType(
+      // Set declaration type.
+      const newDeclaration = declaration.setType(
         Array.from(determinedTypes.get(declaration)!)
           .map(type => type.getText(declaration))
           .sort()
           .join(' | ')
       );
+
+      // Add comment before edited declaration.
+      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      if (
+        modifiedStatement &&
+        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
+      ) {
+        modifiedStatement.replaceWithText(
+          `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement
+            .getText()
+            .trimLeft()}`
+        );
+      }
     });
 
-    // // Print dependency graph
-    // for (const [key, val] of dependencyGraph) {
-    //   console.log(key.getText());
-    //   val.forEach(v => console.log(v.getText()));
-    //   console.log();
-    // }
-
-    // console.log('---');
-
-    // for (const [key, val] of determinedTypes) {
-    //   console.log(key.getText());
-    //   val.forEach(v => console.log(v.getText()));
-    //   console.log();
-    // }
-
-    // console.log('---');
-
-    // for (const key of modifiedDeclarations) {
-    //   console.log(key.getText());
-    // }
+    // If there is a cycle in dependency graph, output to user.
+    if (sortedDeclarations.length !== modifiedDeclarations.size) {
+      const sortedDeclarationsSet = new Set(sortedDeclarations);
+      console.log(
+        'The following declarations are cyclically dependent on each other: '
+      );
+      modifiedDeclarations.forEach(declaration => {
+        if (!sortedDeclarationsSet.has(declaration)) {
+          console.log(
+            `${declaration
+              .getSourceFile()
+              .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Cyclically dependent declaration.`
+          );
+        }
+      });
+    }
   }
 
-  private addToDependencyGraph(
+  /**
+   * Adds a new dependency (edge) between two declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} determinedTypes - Calculated types for each declaration.
+   * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
+   * @param {Node<ts.Node>} predecessor - Declaration that successor is dependent on.
+   * @param {AcceptedDeclaration} successor - Declaration that is dependent on successor.
+   */
+  private addDependency(
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
     determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>,
     predecessor: Node<ts.Node>,
     successor: AcceptedDeclaration
   ): void {
+    // Get predecessor's type.
     const determinedType = this.toTypeList(predecessor.getType());
 
+    // If predecessor is type any, add predecessor's declaration to the dependency graph and modified declarations set
+    // and add the dependency into the graph.
     if (determinedType.some(type => type.isAny())) {
       if (Node.isIdentifier(predecessor)) {
         predecessor
@@ -220,21 +264,29 @@ export class NoImplicitAnyManipulator extends Manipulator {
           });
       }
     } else {
+      // Otherwise, only add predecessor's type to successor's determined types.
       determinedType.forEach(type => {
         this.addToMapSet(determinedTypes, successor, type);
       });
     }
   }
 
-  topoSort<T>(vertices: Set<T>, graph: Map<T, Set<T>>): T[] | undefined {
+  /**
+   * Topologically sorts a directed graph. If cyclic, returns subset of vertices not a part of a cycle.
+   * @param {Set<T>} vertices - Set of vertices.
+   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
+   * @return {T[]} Topologically sorted list of vertices.
+   */
+  topoSort<T>(vertices: Set<T>, edges: Map<T, Set<T>>): T[] {
     const sorted: T[] = [];
     const numDependencies = new Map<T, number>();
 
+    // Construct a map of in-degrees for each vertex.
     for (const vertex of vertices) {
       numDependencies.set(vertex, 0);
     }
 
-    for (const successors of graph.values()) {
+    for (const successors of edges.values()) {
       successors.forEach(successor => {
         numDependencies.set(
           successor,
@@ -243,28 +295,26 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     }
 
+    // Add all vertices with in-degree to queue.
     const queue: T[] = [];
-
     for (const vertex of numDependencies.keys()) {
       if (numDependencies.get(vertex) === 0) {
         queue.push(vertex);
       }
     }
 
+    // While queue is not empty, "visit" each vertex in queue and decrement its successors in-degree by 1
+    // Add successors to queue if their in-degree become 0.
     while (queue.length > 0) {
       const currVertex = queue.shift()!;
       sorted.push(currVertex);
 
-      graph.get(currVertex)?.forEach(successor => {
+      edges.get(currVertex)?.forEach(successor => {
         numDependencies.set(successor, numDependencies.get(successor)! - 1);
         if (numDependencies.get(successor) === 0) {
           queue.push(successor);
         }
       });
-    }
-
-    if (sorted.length !== vertices.size) {
-      return undefined;
     }
 
     return sorted;

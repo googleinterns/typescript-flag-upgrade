@@ -24,7 +24,7 @@ import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Emitter} from '@/src/emitters/emitter';
 import {NoImplicitAnyManipulator} from '@/src/manipulators/no_implicit_any_manipulator';
 
-describe('NoImplicitAnyManipulator ', () => {
+describe('NoImplicitAnyManipulator', () => {
   let project: Project;
   let errorDetector: ErrorDetector;
   let emitter: Emitter;
@@ -50,43 +50,54 @@ describe('NoImplicitAnyManipulator ', () => {
 
   const testFiles = [
     {
-      description: 'fixes when function is missing return statement',
-      inputFilePath: './test/test_files/no_implicit_returns/no_return.ts',
+      description: 'fixes basic cases of assignment and function calls',
+      inputFilePath:
+        './test/test_files/no_implicit_any/basic_assignment_and_functions.ts',
       actualOutputFilePath:
-        './test/test_files/no_implicit_returns/ts_upgrade/no_return.ts',
+        './test/test_files/no_implicit_any/ts_upgrade/basic_assignment_and_functions.ts',
       expectedOutputFilePath:
-        './test/test_files/golden/no_implicit_returns/no_return.ts',
+        './test/test_files/golden/no_implicit_any/basic_assignment_and_functions.ts',
+    },
+    {
+      description:
+        'fixes declarations that require resolving in specific order',
+      inputFilePath:
+        './test/test_files/no_implicit_any/topologically_dependent.ts',
+      actualOutputFilePath:
+        './test/test_files/no_implicit_any/ts_upgrade/topologically_dependent.ts',
+      expectedOutputFilePath:
+        './test/test_files/golden/no_implicit_any/topologically_dependent.ts',
     },
   ];
 
-  // for (let test of testFiles) {
-  //   it(test.description, () => {
-  //     const input = project.addSourceFileAtPath(test.inputFilePath);
-  //     project.resolveSourceFileDependencies();
+  for (let test of testFiles) {
+    it(test.description, () => {
+      const input = project.addSourceFileAtPath(test.inputFilePath);
+      project.resolveSourceFileDependencies();
 
-  //     new Runner(
-  //       /* args*/ undefined,
-  //       project,
-  //       /* parser */ undefined,
-  //       errorDetector,
-  //       [manipulator],
-  //       emitter
-  //     ).run();
+      new Runner(
+        /* args*/ undefined,
+        project,
+        /* parser */ undefined,
+        errorDetector,
+        [manipulator],
+        emitter
+      ).run();
 
-  //     const expectedOutput = project.addSourceFileAtPath(
-  //       test.expectedOutputFilePath
-  //     );
-  //     const actualOutput = project.addSourceFileAtPath(
-  //       test.actualOutputFilePath
-  //     );
+      const expectedOutput = project.addSourceFileAtPath(
+        test.expectedOutputFilePath
+      );
+      const actualOutput = project.addSourceFileAtPath(
+        test.actualOutputFilePath
+      );
 
-  //     expect(actualOutput).toHaveSameASTAs(expectedOutput);
+      expect(actualOutput).toHaveSameASTAs(expectedOutput);
 
-  //     project.removeSourceFile(input);
-  //     project.removeSourceFile(actualOutput);
-  //     project.removeSourceFile(expectedOutput);
-  //   });
-  // }
+      project.removeSourceFile(input);
+      project.removeSourceFile(actualOutput);
+      project.removeSourceFile(expectedOutput);
+    });
+  }
 
   it('topologically sorts graph', () => {
     const basicGraph = {
@@ -101,9 +112,6 @@ describe('NoImplicitAnyManipulator ', () => {
       ],
     };
 
-    expect(
-      manipulator.topoSort(basicGraph.vertices, basicGraph.edges)
-    ).toBeDefined();
     expect(
       basicGraph.sorted.some(expectedOut =>
         _.isEqual(
@@ -121,10 +129,14 @@ describe('NoImplicitAnyManipulator ', () => {
         ['z', new Set(['w'])],
         ['w', new Set(['y'])],
       ]),
+      sorted: ['x'],
     };
 
     expect(
-      manipulator.topoSort(cycleGraph.vertices, cycleGraph.edges)
-    ).toBeUndefined();
+      _.isEqual(
+        cycleGraph.sorted,
+        manipulator.topoSort(cycleGraph.vertices, cycleGraph.edges)
+      )
+    ).toBeTrue();
   });
 });

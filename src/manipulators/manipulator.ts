@@ -14,7 +14,7 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, Node, Type} from 'ts-morph';
+import {Diagnostic, ts, Node, Type, Statement} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
@@ -88,5 +88,16 @@ export abstract class Manipulator {
           return individualType.getBaseTypeOfLiteralType();
         })
       : [type.getBaseTypeOfLiteralType()];
+  }
+
+  /**
+   * Traverses through a node's ancestor and returns the closest Statement node.
+   * @param {Node<ts.Node>} node - Modified node.
+   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
+   */
+  getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
+    return node.getParentWhile((parent, child) => {
+      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
+    }) as Statement;
   }
 }
