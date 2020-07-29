@@ -25,7 +25,7 @@ import {
   ParameterDeclaration,
 } from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
-import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT} from '../types';
+import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT} from '@/src/types';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
