@@ -25,7 +25,7 @@ import {
   ParameterDeclaration,
 } from 'ts-morph';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
-import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT} from '@/src/types';
+import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -63,24 +63,8 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.nodeKinds
     );
 
-    // Set of declarations with implicit any type.
-    const modifiedDeclarations = new Set<AcceptedDeclaration>();
-
-    // Iterate through each node, adding declarations to set.
-    errorNodes.forEach(({node: errorNode}) => {
-      if (Node.isIdentifier(errorNode)) {
-        const errorSymbol = errorNode.getSymbol();
-        const declarations = errorSymbol?.getDeclarations();
-        declarations?.forEach(declaration => {
-          if (
-            Node.isVariableDeclaration(declaration) ||
-            Node.isParameterDeclaration(declaration)
-          ) {
-            modifiedDeclarations.add(declaration);
-          }
-        });
-      }
-    });
+    // Get set of declarations with implicit any type.
+    const modifiedDeclarations = this.getDeclarations(errorNodes);
 
     // Map from declaration to calculated type of declaration.
     const determinedTypes = new Map<AcceptedDeclaration, Set<Type>>();
@@ -94,60 +78,21 @@ export class NoImplicitAnyManipulator extends Manipulator {
     modifiedDeclarations.forEach(declaration => {
       // For parameter declarations, go though each call expression of the parent function.
       if (Node.isParameterDeclaration(declaration)) {
-        // Get the parent function declaration
-        const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
-          SyntaxKind.FunctionDeclaration
+        this.addFunctionCallDeclarationDependencies(
+          declaration,
+          dependencyGraph,
+          determinedTypes,
+          modifiedDeclarations
         );
-
-        // Get index of parameter declaration
-        const parameterIndex = parentFunctionDeclaration
-          ?.getParameters()
-          ?.indexOf(declaration);
-
-        // Search for function call references
-        const functionReferences = parentFunctionDeclaration?.findReferencesAsNodes();
-        functionReferences?.forEach(functionReference => {
-          // In call reference, get arguments in those calls
-          const args = functionReference
-            .getParentIfKind(SyntaxKind.CallExpression)
-            ?.getArguments();
-
-          // Add corresponding argument's declaration to the dependency graph
-          if (
-            args &&
-            parameterIndex !== undefined &&
-            args.length > parameterIndex
-          ) {
-            const correspondingArg = args[parameterIndex];
-            this.addDependency(
-              dependencyGraph,
-              determinedTypes,
-              modifiedDeclarations,
-              correspondingArg,
-              declaration
-            );
-          }
-        });
       }
 
       // For all declarations, find assignment references.
-      const references = declaration.findReferencesAsNodes();
-      references?.forEach(reference => {
-        const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
-        const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
-        const nextSibling = sibling?.getNextSibling();
-
-        // Add assigned value's declaration to the dependency graph
-        if (parent && nextSibling) {
-          this.addDependency(
-            dependencyGraph,
-            determinedTypes,
-            modifiedDeclarations,
-            nextSibling,
-            declaration
-          );
-        }
-      });
+      this.addAssignmentDeclarationDependencies(
+        declaration,
+        dependencyGraph,
+        determinedTypes,
+        modifiedDeclarations
+      );
     });
 
     // Topologically sort the dependency graph to determine order to expand declarations.
@@ -226,6 +171,99 @@ export class NoImplicitAnyManipulator extends Manipulator {
         }
       });
     }
+  }
+
+  /**
+   *
+   * @param {NodeDiagnostic[]} diagnostics - List of diagnostics outputted by parser.
+   */
+  private getDeclarations(nodeDiagnostics: NodeDiagnostic[]) {
+    const declarations = new Set<AcceptedDeclaration>();
+
+    nodeDiagnostics.forEach(({node: node}) => {
+      if (Node.isIdentifier(node)) {
+        node
+          .getSymbol()
+          ?.getDeclarations()
+          ?.forEach(declaration => {
+            if (
+              Node.isVariableDeclaration(declaration) ||
+              Node.isParameterDeclaration(declaration)
+            ) {
+              declarations.add(declaration);
+            }
+          });
+      }
+    });
+
+    return declarations;
+  }
+
+  private addAssignmentDeclarationDependencies(
+    declaration: AcceptedDeclaration,
+    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    modifiedDeclarations: Set<AcceptedDeclaration>
+  ) {
+    const references = declaration.findReferencesAsNodes();
+    references?.forEach(reference => {
+      const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
+      const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
+      const nextSibling = sibling?.getNextSibling();
+
+      // Add assigned value's declaration to the dependency graph
+      if (parent && nextSibling) {
+        this.addDependency(
+          dependencyGraph,
+          determinedTypes,
+          modifiedDeclarations,
+          nextSibling,
+          declaration
+        );
+      }
+    });
+  }
+
+  private addFunctionCallDeclarationDependencies(
+    declaration: ParameterDeclaration,
+    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    modifiedDeclarations: Set<AcceptedDeclaration>
+  ) {
+    // Get the parent function declaration
+    const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
+      SyntaxKind.FunctionDeclaration
+    );
+
+    // Get index of parameter declaration
+    const parameterIndex = parentFunctionDeclaration
+      ?.getParameters()
+      ?.indexOf(declaration);
+
+    // Search for function call references
+    const functionReferences = parentFunctionDeclaration?.findReferencesAsNodes();
+    functionReferences?.forEach(functionReference => {
+      // In call reference, get arguments in those calls
+      const args = functionReference
+        .getParentIfKind(SyntaxKind.CallExpression)
+        ?.getArguments();
+
+      // Add corresponding argument's declaration to the dependency graph
+      if (
+        args &&
+        parameterIndex !== undefined &&
+        args.length > parameterIndex
+      ) {
+        const correspondingArg = args[parameterIndex];
+        this.addDependency(
+          dependencyGraph,
+          determinedTypes,
+          modifiedDeclarations,
+          correspondingArg,
+          declaration
+        );
+      }
+    });
   }
 
   /**
