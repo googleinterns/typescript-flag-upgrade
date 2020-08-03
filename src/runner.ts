@@ -16,7 +16,7 @@
 
 import path from 'path';
 import _ from 'lodash';
-import {Project, ts} from 'ts-morph';
+import {Project, ts, LeftHandSideExpression} from 'ts-morph';
 import {ArgumentOptions, DEFAULT_ARGS} from './types';
 import {Emitter} from './emitters/emitter';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
@@ -91,16 +91,15 @@ export class Runner {
     let errors = this.parser.parse(this.project);
     let prevErrors = errors;
     let errorsExist: boolean;
-    let rotatedManipulators: Manipulator[];
+    let nextManipulatorIndex: number;
 
     do {
       errorsExist = false;
-      rotatedManipulators = [...this.manipulators];
+      nextManipulatorIndex = 0;
 
       // For each manipulator, check if there are errors that it can fix.
       for (const manipulator of this.manipulators) {
-        // Rotate the manipulator list to the left
-        rotatedManipulators.push(rotatedManipulators.shift()!);
+        nextManipulatorIndex += 1;
 
         // If a manipulator detects errors that it can fix, fix them and reparse errors.
         if (manipulator.hasErrors(errors)) {
@@ -113,7 +112,7 @@ export class Runner {
       }
 
       // Rotate manipulators so that in next iteration, the next manipulator is run first.
-      this.manipulators = rotatedManipulators;
+      this.rotateArrayLeft(this.manipulators, nextManipulatorIndex);
 
       // If previous iterations' errors are same as current errors, no more errors can be fixed so exit loop.
       // TODO: Log if previous errors are same as current errors.
@@ -172,6 +171,19 @@ export class Runner {
       throw new Error(
         'Project not current compiling with original tsconfig flags.'
       );
+    }
+  }
+
+  /**
+   * Mutatively rotates an array to the left.
+   * @param {T[]} arr - Array to be rotated.
+   * @param {number} index - Number of elements to rotate the array by.
+   */
+  private rotateArrayLeft<T>(arr: T[], index: number): void {
+    if (arr.length > 0) {
+      for (let times = 0; times < index; times += 1) {
+        arr.push(arr.shift()!);
+      }
     }
   }
 }
