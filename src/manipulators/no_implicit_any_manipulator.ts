@@ -207,17 +207,24 @@ export class NoImplicitAnyManipulator extends Manipulator {
   ) {
     const references = declaration.findReferencesAsNodes();
     references?.forEach(reference => {
-      const parent = reference.getParentIfKind(SyntaxKind.BinaryExpression);
-      const sibling = reference.getNextSiblingIfKind(SyntaxKind.EqualsToken);
-      const nextSibling = sibling?.getNextSibling();
+      const binaryExpressionNode = reference.getParentIfKind(
+        SyntaxKind.BinaryExpression
+      );
+      const variableBeingAssigned = binaryExpressionNode?.getLeft();
+      const binaryExpressionOperator = binaryExpressionNode?.getOperatorToken();
+      const assignedValueExpression = binaryExpressionNode?.getRight();
 
       // Add assigned value's declaration to the dependency graph
-      if (parent && nextSibling) {
+      if (
+        reference === variableBeingAssigned &&
+        binaryExpressionOperator?.getKind() === SyntaxKind.EqualsToken &&
+        assignedValueExpression
+      ) {
         this.addDependency(
           dependencyGraph,
           determinedTypes,
           modifiedDeclarations,
-          nextSibling,
+          assignedValueExpression,
           declaration
         );
       }
