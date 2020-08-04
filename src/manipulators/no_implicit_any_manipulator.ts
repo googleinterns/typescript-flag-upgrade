@@ -67,7 +67,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
     const modifiedDeclarations = this.getDeclarations(errorNodes);
 
     // Map from declaration to calculated type of declaration.
-    const determinedTypes = new Map<AcceptedDeclaration, Set<Type>>();
+    const calculatedDeclarationTypes = new Map<
+      AcceptedDeclaration,
+      Set<Type>
+    >();
 
     // Graph of dependencies between declarations.
     const dependencyGraph = new Map<
@@ -81,7 +84,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
         this.addFunctionCallDeclarationDependencies(
           declaration,
           dependencyGraph,
-          determinedTypes,
+          calculatedDeclarationTypes,
           modifiedDeclarations
         );
       }
@@ -90,7 +93,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.addAssignmentDeclarationDependencies(
         declaration,
         dependencyGraph,
-        determinedTypes,
+        calculatedDeclarationTypes,
         modifiedDeclarations
       );
     });
@@ -101,76 +104,13 @@ export class NoImplicitAnyManipulator extends Manipulator {
       dependencyGraph
     );
 
-    // Set of declarations to skip because its predecessor had type any.
-    const skipDeclarations = new Set<AcceptedDeclaration>();
+    this.calculateDeclarationTypes(
+      calculatedDeclarationTypes,
+      sortedDeclarations,
+      dependencyGraph
+    );
 
-    sortedDeclarations.forEach(declaration => {
-      // If declaration is skipped, also skip its successors.
-      if (skipDeclarations.has(declaration)) {
-        dependencyGraph
-          .get(declaration)
-          ?.forEach(successor => skipDeclarations.add(successor));
-        return;
-      }
-
-      // If declaration has type any, output to user and skip successors.
-      if (!determinedTypes.has(declaration)) {
-        console.log(
-          `${declaration
-            .getSourceFile()
-            .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Unable to automatically determined type.`
-        );
-        dependencyGraph
-          .get(declaration)
-          ?.forEach(successor => skipDeclarations.add(successor));
-        return;
-      }
-
-      // If declaration has determined type, also give successors the determined type.
-      dependencyGraph.get(declaration)?.forEach(successor => {
-        determinedTypes.get(declaration)!.forEach(determinedType => {
-          this.addToMapSet(determinedTypes, successor, determinedType);
-        });
-      });
-
-      // Set declaration type.
-      const newDeclaration = declaration.setType(
-        Array.from(determinedTypes.get(declaration)!)
-          .map(type => type.getText(declaration))
-          .sort()
-          .join(' | ')
-      );
-
-      // Add comment before edited declaration.
-      const modifiedStatement = this.getModifiedStatement(newDeclaration);
-      if (
-        modifiedStatement &&
-        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
-      ) {
-        modifiedStatement.replaceWithText(
-          `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement
-            .getText()
-            .trimLeft()}`
-        );
-      }
-    });
-
-    // If there is a cycle in dependency graph, output to user.
-    if (sortedDeclarations.length !== modifiedDeclarations.size) {
-      const sortedDeclarationsSet = new Set(sortedDeclarations);
-      console.log(
-        'The following declarations are cyclically dependent on each other: '
-      );
-      modifiedDeclarations.forEach(declaration => {
-        if (!sortedDeclarationsSet.has(declaration)) {
-          console.log(
-            `${declaration
-              .getSourceFile()
-              .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Cyclically dependent declaration.`
-          );
-        }
-      });
-    }
+    this.setDeclarationTypes(calculatedDeclarationTypes);
   }
 
   /**
@@ -202,7 +142,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
   private addAssignmentDeclarationDependencies(
     declaration: AcceptedDeclaration,
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
-    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ) {
     const references = declaration.findReferencesAsNodes();
@@ -222,7 +162,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       ) {
         this.addDependency(
           dependencyGraph,
-          determinedTypes,
+          calculatedDeclarationTypes,
           modifiedDeclarations,
           assignedValueExpression,
           declaration
@@ -234,7 +174,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
   private addFunctionCallDeclarationDependencies(
     declaration: ParameterDeclaration,
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
-    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ) {
     // Get the parent function declaration
@@ -264,7 +204,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
         const correspondingArg = args[parameterIndex];
         this.addDependency(
           dependencyGraph,
-          determinedTypes,
+          calculatedDeclarationTypes,
           modifiedDeclarations,
           correspondingArg,
           declaration
@@ -276,24 +216,24 @@ export class NoImplicitAnyManipulator extends Manipulator {
   /**
    * Adds a new dependency (edge) between two declarations.
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} determinedTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    * @param {Node<ts.Node>} predecessor - Declaration that successor is dependent on.
    * @param {AcceptedDeclaration} successor - Declaration that is dependent on successor.
    */
   private addDependency(
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
-    determinedTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>,
     predecessor: Node<ts.Node>,
     successor: AcceptedDeclaration
   ): void {
     // Get predecessor's type.
-    const determinedType = this.toTypeList(predecessor.getType());
+    const calculatedType = this.toTypeList(predecessor.getType());
 
     // If predecessor is type any, add predecessor's declaration to the dependency graph and modified declarations set
     // and add the dependency into the graph.
-    if (determinedType.some(type => type.isAny())) {
+    if (calculatedType.some(type => type.isAny())) {
       if (Node.isIdentifier(predecessor)) {
         predecessor
           .getSymbol()
@@ -309,11 +249,81 @@ export class NoImplicitAnyManipulator extends Manipulator {
           });
       }
     } else {
-      // Otherwise, only add predecessor's type to successor's determined types.
-      determinedType.forEach(type => {
-        this.addToMapSet(determinedTypes, successor, type);
+      // Otherwise, only add predecessor's type to successor's calculated types.
+      calculatedType.forEach(type => {
+        this.addToMapSet(calculatedDeclarationTypes, successor, type);
       });
     }
+  }
+
+  private setDeclarationTypes(
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>
+  ): void {
+    for (const [declaration, types] of calculatedDeclarationTypes) {
+      // Set declaration type.
+      const newDeclaration = declaration.setType(
+        Array.from(types)
+          .map(type => type.getText(declaration))
+          .sort()
+          .join(' | ')
+      );
+
+      // Add comment before edited declaration.
+      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      if (
+        modifiedStatement &&
+        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
+      ) {
+        modifiedStatement.replaceWithText(
+          `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement
+            .getText()
+            .trimLeft()}`
+        );
+      }
+    }
+  }
+
+  private calculateDeclarationTypes(
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
+    sortedDeclarations: AcceptedDeclaration[],
+    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>
+  ) {
+    // Set of declarations to skip because its predecessor had type any.
+    const skipDeclarations = new Set<AcceptedDeclaration>();
+
+    sortedDeclarations.forEach(declaration => {
+      // If declaration is skipped, also skip its successors.
+      if (skipDeclarations.has(declaration)) {
+        dependencyGraph
+          .get(declaration)
+          ?.forEach(successor => skipDeclarations.add(successor));
+        return;
+      }
+
+      // If declaration has type any, output to user and skip successors.
+      if (!calculatedDeclarationTypes.has(declaration)) {
+        console.log(
+          `${declaration
+            .getSourceFile()
+            .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Unable to automatically calculate type.`
+        );
+        dependencyGraph
+          .get(declaration)
+          ?.forEach(successor => skipDeclarations.add(successor));
+        return;
+      }
+
+      // If declaration has determined type, also give successors the calculated type.
+      dependencyGraph.get(declaration)?.forEach(successor => {
+        calculatedDeclarationTypes.get(declaration)!.forEach(calculatedType => {
+          this.addToMapSet(
+            calculatedDeclarationTypes,
+            successor,
+            calculatedType
+          );
+        });
+      });
+    });
   }
 
   /**
