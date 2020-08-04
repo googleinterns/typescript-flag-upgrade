@@ -24,6 +24,7 @@ import {
   VariableDeclaration,
   ParameterDeclaration,
 } from 'ts-morph';
+import chalk from 'chalk';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 
@@ -302,10 +303,16 @@ export class NoImplicitAnyManipulator extends Manipulator {
 
       // If declaration has type any, output to user and skip successors.
       if (!calculatedDeclarationTypes.has(declaration)) {
+        // TODO: Move console log funcionality to a logger class.
         console.log(
-          `${declaration
-            .getSourceFile()
-            .getFilePath()}:${declaration.getStartLineNumber()}:${declaration.getStartLinePos()}:${declaration.getText()} - Unable to automatically calculate type.`
+          chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            `: Unable to automatically calculate type of '${declaration.getText()}'.`
         );
         dependencyGraph
           .get(declaration)
