@@ -16,7 +16,7 @@
 
 import path from 'path';
 import _ from 'lodash';
-import {Project, ts, LeftHandSideExpression} from 'ts-morph';
+import {Project, ts} from 'ts-morph';
 import {ArgumentOptions, DEFAULT_ARGS} from './types';
 import {Emitter} from './emitters/emitter';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
@@ -69,9 +69,9 @@ export class Runner {
     this.errorDetector = errorDetector || new ProdErrorDetector();
     this.manipulators = manipulators || [
       new NoImplicitReturnsManipulator(this.errorDetector),
-      new NoImplicitAnyManipulator(this.errorDetector),
       new StrictPropertyInitializationManipulator(this.errorDetector),
       new StrictNullChecksManipulator(this.errorDetector),
+      new NoImplicitAnyManipulator(this.errorDetector),
     ];
     this.emitter = emitter || new InPlaceEmitter();
   }
