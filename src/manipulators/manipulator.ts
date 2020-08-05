@@ -91,13 +91,17 @@ export abstract class Manipulator {
   }
 
   /**
-   * Traverses through a node's ancestor and returns the closest Statement node.
+   * Returns a modified node's closest Statement ancestor, or the node itself if it is Statement.
    * @param {Node<ts.Node>} node - Modified node.
    * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
    */
   getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
+    if (Node.isStatement(node)) {
+      return node;
+    }
+
     return node.getParentWhile((parent, child) => {
       return !(Node.isStatementedNode(parent) && Node.isStatement(child));
-    }) as Statement;
+    }) as Statement | undefined;
   }
 }
