@@ -129,7 +129,7 @@ describe('NoImplicitAnyManipulator', () => {
         ['z', new Set(['w'])],
         ['w', new Set(['y'])],
       ]),
-      sorted: ['x'],
+      sorted: ['x', 'y', 'z', 'w'],
     };
 
     expect(

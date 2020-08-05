@@ -25,6 +25,7 @@ import {
   ParameterDeclaration,
 } from 'ts-morph';
 import chalk from 'chalk';
+import _ from 'lodash';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 
@@ -126,13 +127,13 @@ export class NoImplicitAnyManipulator extends Manipulator {
         node
           .getSymbol()
           ?.getDeclarations()
-          ?.forEach(declaration => {
-            if (
+          ?.filter(
+            declaration =>
               Node.isVariableDeclaration(declaration) ||
               Node.isParameterDeclaration(declaration)
-            ) {
-              declarations.add(declaration);
-            }
+          )
+          ?.forEach(declaration => {
+            declarations.add(declaration as AcceptedDeclaration);
           });
       }
     });
@@ -289,45 +290,49 @@ export class NoImplicitAnyManipulator extends Manipulator {
     sortedDeclarations: AcceptedDeclaration[],
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>
   ) {
-    // Set of declarations to skip because its predecessor had type any.
-    const skipDeclarations = new Set<AcceptedDeclaration>();
+    _.times(2, () => {
+      // Set of declarations to skip because its predecessor had type any.
+      const skipDeclarations = new Set<AcceptedDeclaration>();
 
-    sortedDeclarations.forEach(declaration => {
-      // If declaration is skipped, also skip its successors.
-      if (skipDeclarations.has(declaration)) {
-        dependencyGraph
-          .get(declaration)
-          ?.forEach(successor => skipDeclarations.add(successor));
-        return;
-      }
+      sortedDeclarations.forEach(declaration => {
+        // If declaration is skipped, also skip its successors.
+        if (skipDeclarations.has(declaration)) {
+          dependencyGraph
+            .get(declaration)
+            ?.forEach(successor => skipDeclarations.add(successor));
+          return;
+        }
 
-      // If declaration has type any, output to user and skip successors.
-      if (!calculatedDeclarationTypes.has(declaration)) {
-        // TODO: Move console log funcionality to a logger class.
-        console.log(
-          chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
-            ':' +
-            chalk.yellow(`${declaration.getStartLineNumber()}`) +
-            ':' +
-            chalk.yellow(`${declaration.getStartLinePos()}`) +
-            ' - ' +
-            chalk.red('error') +
-            `: Unable to automatically calculate type of '${declaration.getText()}'.`
-        );
-        dependencyGraph
-          .get(declaration)
-          ?.forEach(successor => skipDeclarations.add(successor));
-        return;
-      }
-
-      // If declaration has determined type, also give successors the calculated type.
-      dependencyGraph.get(declaration)?.forEach(successor => {
-        calculatedDeclarationTypes.get(declaration)!.forEach(calculatedType => {
-          this.addToMapSet(
-            calculatedDeclarationTypes,
-            successor,
-            calculatedType
+        // If declaration has type any, output to user and skip successors.
+        if (!calculatedDeclarationTypes.has(declaration)) {
+          // TODO: Move console log funcionality to a logger class.
+          console.log(
+            chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
+              ':' +
+              chalk.yellow(`${declaration.getStartLineNumber()}`) +
+              ':' +
+              chalk.yellow(`${declaration.getStartLinePos()}`) +
+              ' - ' +
+              chalk.red('error') +
+              `: Unable to automatically calculate type of '${declaration.getText()}'.`
           );
+          dependencyGraph
+            .get(declaration)
+            ?.forEach(successor => skipDeclarations.add(successor));
+          return;
+        }
+
+        // If declaration has determined type, also give successors the calculated type.
+        dependencyGraph.get(declaration)?.forEach(successor => {
+          calculatedDeclarationTypes
+            .get(declaration)!
+            .forEach(calculatedType => {
+              this.addToMapSet(
+                calculatedDeclarationTypes,
+                successor,
+                calculatedType
+              );
+            });
         });
       });
     });
@@ -340,45 +345,31 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * @return {T[]} Topologically sorted list of vertices.
    */
   topoSort<T>(vertices: Set<T>, edges: Map<T, Set<T>>): T[] {
-    const sorted: T[] = [];
-    const numDependencies = new Map<T, number>();
+    const postOrder: T[] = [];
+    const visitedVertices = new Set<T>();
 
     // Construct a map of in-degrees for each vertex.
-    for (const vertex of vertices) {
-      numDependencies.set(vertex, 0);
-    }
-
-    for (const successors of edges.values()) {
-      successors.forEach(successor => {
-        numDependencies.set(
-          successor,
-          (numDependencies.get(successor) || 0) + 1
-        );
-      });
-    }
-
-    // Add all vertices with in-degree to queue.
-    const queue: T[] = [];
-    for (const vertex of numDependencies.keys()) {
-      if (numDependencies.get(vertex) === 0) {
-        queue.push(vertex);
+    vertices.forEach(vertex => {
+      if (!visitedVertices.has(vertex)) {
+        this.postOrderRecurse(vertex, visitedVertices, postOrder, edges);
       }
-    }
+    });
 
-    // While queue is not empty, "visit" each vertex in queue and decrement its successors in-degree by 1
-    // Add successors to queue if their in-degree become 0.
-    while (queue.length > 0) {
-      const currVertex = queue.shift()!;
-      sorted.push(currVertex);
+    return postOrder.reverse();
+  }
 
-      edges.get(currVertex)?.forEach(successor => {
-        numDependencies.set(successor, numDependencies.get(successor)! - 1);
-        if (numDependencies.get(successor) === 0) {
-          queue.push(successor);
-        }
-      });
-    }
-
-    return sorted;
+  private postOrderRecurse<T>(
+    vertex: T,
+    visitedVertices: Set<T>,
+    postOrder: T[],
+    edges: Map<T, Set<T>>
+  ): void {
+    visitedVertices.add(vertex);
+    edges.get(vertex)?.forEach(successor => {
+      if (!visitedVertices.has(successor)) {
+        this.postOrderRecurse(successor, visitedVertices, postOrder, edges);
+      }
+    });
+    postOrder.push(vertex);
   }
 }
