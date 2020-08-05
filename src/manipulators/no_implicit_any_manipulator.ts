@@ -106,20 +106,25 @@ export class NoImplicitAnyManipulator extends Manipulator {
       dependencyGraph
     );
 
+    // In topological order, calculate the inferred types of every declaration.
     this.calculateDeclarationTypes(
       calculatedDeclarationTypes,
       sortedDeclarations,
       dependencyGraph
     );
 
+    // Set each declaration's type to the calculated type.
     this.setDeclarationTypes(calculatedDeclarationTypes);
   }
 
   /**
-   *
-   * @param {NodeDiagnostic[]} diagnostics - List of diagnostics outputted by parser.
+   * Returns the set of declarations with implicit any type given a list of node diagnostics.
+   * @param {NodeDiagnostic[]} nodeDiagnostics - List of node diagnostics outputted by parser.
+   * @return Set of declarations with implicit any type based on node diagnostics.
    */
-  private getDeclarations(nodeDiagnostics: NodeDiagnostic[]) {
+  private getDeclarations(
+    nodeDiagnostics: NodeDiagnostic[]
+  ): Set<AcceptedDeclaration> {
     const declarations = new Set<AcceptedDeclaration>();
 
     nodeDiagnostics.forEach(({node: node}) => {
@@ -141,12 +146,24 @@ export class NoImplicitAnyManipulator extends Manipulator {
     return declarations;
   }
 
+  /**
+   * Searches through all references of a declaration and adds edges into the dependency graph whereever
+   * it is assigned to another declaration value.
+   *
+   * Eg. foo = bar;
+   * Inserts the dependency bar -> foo, because the type of foo is dependent on the type of bar.
+   *
+   * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
+   */
   private addAssignmentDeclarationDependencies(
     declaration: AcceptedDeclaration,
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
-  ) {
+  ): void {
     const references = declaration.findReferencesAsNodes();
     references?.forEach(reference => {
       const binaryExpressionNode = reference.getParentIfKind(
@@ -173,12 +190,24 @@ export class NoImplicitAnyManipulator extends Manipulator {
     });
   }
 
+  /**
+   * Searches through all references of a parameter declaration and adds edges into the dependency graph
+   * whereever its parent function is being called.
+   *
+   * Eg. function foo(bar) {}; foo(baz);
+   * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
+   *
+   * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
+   */
   private addFunctionCallDeclarationDependencies(
     declaration: ParameterDeclaration,
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
-  ) {
+  ): void {
     // Get the parent function declaration
     const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
       SyntaxKind.FunctionDeclaration
@@ -216,8 +245,18 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
-   * Adds a new dependency (edge) between two declarations.
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph.
+   * Adds a new dependency (edge) between two declarations from predecessor -> successor, meaning that the type of successor
+   * is dependent on the type of predecessor.
+   *
+   * Right now, dependencies are established through assignment and function calls:
+   *
+   * Eg. foo = bar;
+   * Inserts the dependency bar -> foo, because the type of foo is dependent on the type of bar.
+   *
+   * Eg. function foo(bar) {}; foo(baz);
+   * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
+   *
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
    * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    * @param {Node<ts.Node>} predecessor - Declaration that successor is dependent on.
@@ -258,6 +297,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
     }
   }
 
+  /**
+   * Sets declaration types based on calculated declaration types.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   */
   private setDeclarationTypes(
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>
   ): void {
@@ -285,11 +328,18 @@ export class NoImplicitAnyManipulator extends Manipulator {
     }
   }
 
+  /**
+   * Calculates final inferred declaration types in topological order based on declaration dependencies.
+   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {AcceptedDeclaration[]} sortedDeclarations - Topologically sorted list of declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   */
   private calculateDeclarationTypes(
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     sortedDeclarations: AcceptedDeclaration[],
     dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>
   ) {
+    // Runs code block twice to handle cyclical dependencies between declarations.
     _.times(2, () => {
       // Set of declarations to skip because its predecessor had type any.
       const skipDeclarations = new Set<AcceptedDeclaration>();
@@ -339,7 +389,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
-   * Topologically sorts a directed graph. If cyclic, returns subset of vertices not a part of a cycle.
+   * Topologically sorts a directed graph. If cyclic, returns vertices in an order that minimizes dependency violations.
    * @param {Set<T>} vertices - Set of vertices.
    * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
    * @return {T[]} Topologically sorted list of vertices.
@@ -347,17 +397,21 @@ export class NoImplicitAnyManipulator extends Manipulator {
   topoSort<T>(vertices: Set<T>, edges: Map<T, Set<T>>): T[] {
     const postOrder: T[] = [];
     const visitedVertices = new Set<T>();
-
-    // Construct a map of in-degrees for each vertex.
     vertices.forEach(vertex => {
       if (!visitedVertices.has(vertex)) {
         this.postOrderRecurse(vertex, visitedVertices, postOrder, edges);
       }
     });
-
     return postOrder.reverse();
   }
 
+  /**
+   * Recursively constructs the postorder depth-first traversal.
+   * @param {T} vertex - Current vertex.
+   * @param {Set<T>} visitedVertices - Set of visited vertices.
+   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
+   * @param {T[]} postOrder - Postorder depth-first traversal so far.
+   */
   private postOrderRecurse<T>(
     vertex: T,
     visitedVertices: Set<T>,
