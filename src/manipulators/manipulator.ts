@@ -67,14 +67,12 @@ export abstract class Manipulator {
    * @param {V} val - Value to insert.
    */
   addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
-    if (map.has(key)) {
-      map.get(key)?.add(val);
-    } else {
-      map.set(
-        key,
-        new Set<V>([val])
-      );
+    let values: Set<V> | undefined = map.get(key);
+    if (!values) {
+      values = new Set<V>();
+      map.set(key, values);
     }
+    values.add(val);
   }
 
   /**
