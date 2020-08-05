@@ -311,7 +311,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         );
       } else if (
         !Node.isNonNullExpression(errorNode.getChildAtIndex(1)) &&
-        !errorNode.getText().endsWith('!')
+        !errorNode.getChildAtIndex(1).getText().endsWith('!')
       ) {
         errorNode = errorNode.replaceWithText(
           `return (${errorNode.getChildAtIndex(1).getText()})!`
