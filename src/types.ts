@@ -14,15 +14,7 @@
     limitations under the License.
 */
 
-import {
-  Node,
-  ts,
-  Diagnostic,
-  VariableDeclaration,
-  ParameterDeclaration,
-  PropertyDeclaration,
-  PropertySignature,
-} from 'ts-morph';
+import {Node, ts, Diagnostic} from 'ts-morph';
 
 export type ArgumentOptions = {
   [x: string]: unknown;
@@ -63,14 +55,6 @@ export enum ErrorCodes {
   ReturnTypeImplicitlyAny = 7010,
   ObjectPropertyImplicitlyAny = 7053,
 }
-
-export type DeclarationType = Map<
-  | VariableDeclaration
-  | ParameterDeclaration
-  | PropertyDeclaration
-  | PropertySignature,
-  Set<string>
->;
 
 export const STRICT_NULL_CHECKS_COMMENT =
   '// typescript-flag-upgrade automated fix: --strictNullChecks';

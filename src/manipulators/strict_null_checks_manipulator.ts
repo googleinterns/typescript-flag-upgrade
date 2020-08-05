@@ -31,12 +31,14 @@ import {
   Statement,
   PropertySignature,
 } from 'ts-morph';
-import {
-  ErrorCodes,
-  DeclarationType,
-  STRICT_NULL_CHECKS_COMMENT,
-} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
+import {ErrorCodes, STRICT_NULL_CHECKS_COMMENT} from '@/src/types';
+
+type AcceptedDeclaration =
+  | VariableDeclaration
+  | ParameterDeclaration
+  | PropertyDeclaration
+  | PropertySignature;
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.
@@ -85,11 +87,8 @@ export class StrictNullChecksManipulator extends Manipulator {
     const modifiedSourceFiles = new Set<SourceFile>();
 
     // Initialize map of declarations to their types
-    const modifiedDeclarationTypes: DeclarationType = new Map<
-      | VariableDeclaration
-      | ParameterDeclaration
-      | PropertyDeclaration
-      | PropertySignature,
+    const modifiedDeclarationTypes = new Map<
+      AcceptedDeclaration,
       Set<string>
     >();
 
@@ -203,12 +202,12 @@ export class StrictNullChecksManipulator extends Manipulator {
    * Fix empty array declaration types to any[] instead of never[].
    * @param {SourceFile} sourceFile - Source file to fix.
    * @param {Set<SourceFile>} fixedSourceFiles - Set of source files that have already been fixed.
-   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
    */
   private fixNeverType(
     sourceFile: SourceFile,
     fixedSourceFiles: Set<SourceFile>,
-    modifiedDeclarationTypes: DeclarationType
+    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
   ): void {
     // Eg. let foo = []; -> let foo: any[] = [];
     if (!fixedSourceFiles.has(sourceFile)) {
@@ -260,13 +259,13 @@ export class StrictNullChecksManipulator extends Manipulator {
    * Handle object being assigned a type not assignable to the declared type by expanding declaration type.
    * @param {Node<ts.Node>} errorNode - Node of object with non assignable type.
    * @param {Diagnostic} diagnostic - Error diagnostic.
-   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
    * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
    */
   private handleNonAssignableTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
-    modifiedDeclarationTypes: DeclarationType,
+    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     modifiedStatementedNodes: Set<[StatementedNode, number]>
   ): void {
     if (!this.nodeKinds.has(errorNode.getKind())) {
@@ -310,7 +309,10 @@ export class StrictNullChecksManipulator extends Manipulator {
           modifiedStatementedNodes,
           errorNode as Statement
         );
-      } else if (!Node.isNonNullExpression(errorNode.getChildAtIndex(1))) {
+      } else if (
+        !Node.isNonNullExpression(errorNode.getChildAtIndex(1)) &&
+        !errorNode.getText().endsWith('!')
+      ) {
         errorNode = errorNode.replaceWithText(
           `return (${errorNode.getChildAtIndex(1).getText()})!`
         );
@@ -327,13 +329,13 @@ export class StrictNullChecksManipulator extends Manipulator {
    * Handle argument type not assignable to parameter type.
    * @param {Node<ts.Node>} errorNode - Node of argument with non assignable type.
    * @param {Diagnostic} diagnostic - Error diagnostic.
-   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
    * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
    */
   private handleNonAssignableArgumentTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
-    modifiedDeclarationTypes: DeclarationType,
+    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     modifiedStatementedNodes: Set<[StatementedNode, number]>
   ): void {
     if (diagnostic.getLength() !== errorNode.getText().length) {
@@ -376,13 +378,16 @@ export class StrictNullChecksManipulator extends Manipulator {
       }
     } else {
       // If argument is being called by an empty array, ignore
-      const parent = errorNode.getParentIfKind(SyntaxKind.CallExpression);
-      const sibling = parent?.getFirstChildIfKind(
-        SyntaxKind.PropertyAccessExpression
+      const callExpressionNode = errorNode.getParentIfKind(
+        SyntaxKind.CallExpression
       );
-      const callerType = sibling?.getFirstChild()?.getType().getText();
+      const callerType = callExpressionNode
+        ?.getFirstChildIfKind(SyntaxKind.PropertyAccessExpression)
+        ?.getFirstChild()
+        ?.getType()
+        .getText();
 
-      if (parent && sibling && callerType === 'never[]') {
+      if (callerType === 'never[]') {
         return;
       }
 
@@ -413,12 +418,19 @@ export class StrictNullChecksManipulator extends Manipulator {
   private determineAssignedType(node: Node<ts.Node>): Type[] {
     let assignedTypes: Type[] = [];
 
-    const parent = node.getParentIfKind(SyntaxKind.BinaryExpression);
-    const sibling = node.getNextSiblingIfKind(SyntaxKind.EqualsToken);
-    const nextSibling = sibling?.getNextSibling();
+    const binaryExpressionNode = node.getParentIfKind(
+      SyntaxKind.BinaryExpression
+    );
+    const variableBeingAssigned = binaryExpressionNode?.getLeft();
+    const binaryExpressionOperator = binaryExpressionNode?.getOperatorToken();
+    const assignedValueExpression = binaryExpressionNode?.getRight();
 
-    if (sibling && parent && nextSibling) {
-      assignedTypes = this.toTypeList(nextSibling.getType());
+    if (
+      node === variableBeingAssigned &&
+      binaryExpressionOperator?.getKind() === SyntaxKind.EqualsToken &&
+      assignedValueExpression
+    ) {
+      assignedTypes = this.toTypeList(assignedValueExpression.getType());
     }
 
     return assignedTypes;
@@ -452,12 +464,12 @@ export class StrictNullChecksManipulator extends Manipulator {
 
   /**
    * Adds a list of types to a map of expanded declaration types.
-   * @param {DeclarationType} modifiedDeclarationTypes - Map of expanded declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
    * @param {Node<ts.Node>} declaration - Declaration node to add type to.
    * @param {string[]} typesToAdd - List of types to add to declaration.
    */
   private addModifiedDeclarationTypes(
-    modifiedDeclarationTypes: DeclarationType,
+    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     declaration: Node<ts.Node>,
     typesToAdd: string[]
   ): void {
