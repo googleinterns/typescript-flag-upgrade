@@ -14,4 +14,4 @@ function foo(z: number | string) {
 }
 
 // typescript-flag-upgrade automated fix: --noImplicitAny
-function bar(w: string) {}
+function bar(w: number | string) {}

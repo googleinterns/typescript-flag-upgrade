@@ -13,5 +13,5 @@ function foo(z) {
   z = y;
 }
 
-// Fix: function bar(w: string) {}
+// Fix: function bar(w: number | string) {}
 function bar(w) {}

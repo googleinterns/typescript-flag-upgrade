@@ -23,6 +23,7 @@ import {
   Type,
   VariableDeclaration,
   ParameterDeclaration,
+  TypeFormatFlags,
 } from 'ts-morph';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -55,14 +56,17 @@ export class NoImplicitAnyManipulator extends Manipulator {
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
-    const errorNodes = this.errorDetector.filterDiagnosticsByKind(
-      this.errorDetector.getNodesFromDiagnostics(
-        this.errorDetector.filterDiagnosticsByCode(
-          diagnostics,
-          this.errorCodesToFix
-        )
-      ),
-      this.nodeKinds
+    // Filters out errors in test files for this manipulator specifically.
+    const errorNodes = this.filterOutTestFiles(
+      this.errorDetector.filterDiagnosticsByKind(
+        this.errorDetector.getNodesFromDiagnostics(
+          this.errorDetector.filterDiagnosticsByCode(
+            diagnostics,
+            this.errorCodesToFix
+          )
+        ),
+        this.nodeKinds
+      )
     );
 
     // Get set of declarations with implicit any type.
@@ -118,6 +122,19 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
+   * Filters out error nodes in test files (with filenames ending in spec.ts or _test.ts).
+   * @param {NodeDiagnostic[]} nodeDiagnostics - List of node diagnostics outputted by parser.
+   * @return List of filtered node diagnostics not located in a test file.
+   */
+  private filterOutTestFiles(
+    nodeDiagnostics: NodeDiagnostic[]
+  ): NodeDiagnostic[] {
+    return nodeDiagnostics.filter(({node: node}) => {
+      return !/^.*(_test|\.spec)\.ts$/.test(node.getSourceFile().getFilePath());
+    });
+  }
+
+  /**
    * Returns the set of declarations with implicit any type given a list of node diagnostics.
    * @param {NodeDiagnostic[]} nodeDiagnostics - List of node diagnostics outputted by parser.
    * @return Set of declarations with implicit any type based on node diagnostics.
@@ -164,8 +181,19 @@ export class NoImplicitAnyManipulator extends Manipulator {
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
-    const references = declaration.findReferencesAsNodes();
-    references?.forEach(reference => {
+    // If declaration has an initialized value, add its type to the calculated declaration types.
+    const initializedValue = declaration.getInitializer();
+    const initializedType = initializedValue
+      ? this.toTypeList(initializedValue.getType())
+      : undefined;
+    if (initializedType) {
+      initializedType.forEach(type => {
+        this.addToMapSet(calculatedDeclarationTypes, declaration, type);
+      });
+    }
+
+    // Find for all assignment references for declaration.
+    declaration.findReferencesAsNodes()?.forEach(reference => {
       const binaryExpressionNode = reference.getParentIfKind(
         SyntaxKind.BinaryExpression
       );
@@ -173,7 +201,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       const binaryExpressionOperator = binaryExpressionNode?.getOperatorToken();
       const assignedValueExpression = binaryExpressionNode?.getRight();
 
-      // Add assigned value's declaration to the dependency graph
+      // Add assigned value's declaration to the dependency graph.
       if (
         reference === variableBeingAssigned &&
         binaryExpressionOperator?.getKind() === SyntaxKind.EqualsToken &&
@@ -269,31 +297,28 @@ export class NoImplicitAnyManipulator extends Manipulator {
     predecessor: Node<ts.Node>,
     successor: AcceptedDeclaration
   ): void {
-    // Get predecessor's type.
+    // Get predecessor's type and add it to the calculated declaration type of the successor.
     const calculatedType = this.toTypeList(predecessor.getType());
+    calculatedType.forEach(type => {
+      this.addToMapSet(calculatedDeclarationTypes, successor, type);
+    });
 
-    // If predecessor is type any, add predecessor's declaration to the dependency graph and modified declarations set
-    // and add the dependency into the graph.
-    if (calculatedType.some(type => type.isAny())) {
-      if (Node.isIdentifier(predecessor)) {
-        predecessor
-          .getSymbol()
-          ?.getDeclarations()
-          ?.forEach(assignedDeclaration => {
-            if (
-              Node.isVariableDeclaration(assignedDeclaration) ||
-              Node.isParameterDeclaration(assignedDeclaration)
-            ) {
-              modifiedDeclarations.add(assignedDeclaration);
+    // If the predecessor's declaration is one of the declarations that is also implicitly any, add
+    // in an edge from predecessor -> successor in the dependency graph.
+    if (Node.isIdentifier(predecessor)) {
+      predecessor
+        .getSymbol()
+        ?.getDeclarations()
+        ?.forEach(assignedDeclaration => {
+          if (
+            Node.isVariableDeclaration(assignedDeclaration) ||
+            Node.isParameterDeclaration(assignedDeclaration)
+          ) {
+            if (modifiedDeclarations.has(assignedDeclaration)) {
               this.addToMapSet(dependencyGraph, assignedDeclaration, successor);
             }
-          });
-      }
-    } else {
-      // Otherwise, only add predecessor's type to successor's calculated types.
-      calculatedType.forEach(type => {
-        this.addToMapSet(calculatedDeclarationTypes, successor, type);
-      });
+          }
+        });
     }
   }
 
@@ -308,10 +333,19 @@ export class NoImplicitAnyManipulator extends Manipulator {
       // Set declaration type.
       const newDeclaration = declaration.setType(
         Array.from(types)
-          .map(type => type.getText(declaration))
+          .map(type =>
+            type.getText(
+              declaration,
+              TypeFormatFlags.UseAliasDefinedOutsideCurrentScope |
+                TypeFormatFlags.WriteArrayAsGenericType
+            )
+          )
           .sort()
           .join(' | ')
       );
+
+      // Fix missing imports if applicable.
+      newDeclaration.getSourceFile().fixMissingImports();
 
       // Add comment before edited declaration.
       const modifiedStatement = this.getModifiedStatement(newDeclaration);
@@ -354,7 +388,12 @@ export class NoImplicitAnyManipulator extends Manipulator {
         }
 
         // If declaration has type any, output to user and skip successors.
-        if (!calculatedDeclarationTypes.has(declaration)) {
+        if (
+          !calculatedDeclarationTypes.has(declaration) ||
+          Array.from(
+            calculatedDeclarationTypes.get(declaration) || []
+          ).some(type => type.isAny())
+        ) {
           // TODO: Move console log funcionality to a logger class.
           console.log(
             chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
@@ -366,9 +405,13 @@ export class NoImplicitAnyManipulator extends Manipulator {
               chalk.red('error') +
               `: Unable to automatically calculate type of '${declaration.getText()}'.`
           );
-          dependencyGraph
-            .get(declaration)
-            ?.forEach(successor => skipDeclarations.add(successor));
+
+          calculatedDeclarationTypes.delete(declaration);
+          dependencyGraph.get(declaration)?.forEach(successor => {
+            skipDeclarations.add(successor);
+            calculatedDeclarationTypes.delete(successor);
+          });
+
           return;
         }
 
