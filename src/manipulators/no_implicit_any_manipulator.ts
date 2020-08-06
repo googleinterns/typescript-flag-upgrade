@@ -394,8 +394,8 @@ export class NoImplicitAnyManipulator extends Manipulator {
       Set<AcceptedDeclaration>
     >
   ) {
-    // Calculate all descendent dependencies (direct and indirect) for every declaration.
-    const descendentDeclarationDependencies = this.calculateDescendentDependencies(
+    // Calculate all descendant dependencies (direct and indirect) for every declaration.
+    const descendantDeclarationDependencies = this.calculateDescendantDependencies(
       new Set(sortedDeclarations),
       directDeclarationDependencies
     );
@@ -405,15 +405,15 @@ export class NoImplicitAnyManipulator extends Manipulator {
     const skipDeclarations = new Set<AcceptedDeclaration>();
 
     sortedDeclarations.forEach(declaration => {
-      // If declaration is skipped, also skip its descendents.
+      // If declaration is skipped, also skip its descendants.
       if (skipDeclarations.has(declaration)) {
-        descendentDeclarationDependencies
+        descendantDeclarationDependencies
           .get(declaration)
-          ?.forEach(descendent => skipDeclarations.add(descendent));
+          ?.forEach(descendant => skipDeclarations.add(descendant));
         return;
       }
 
-      // If declaration has type any, log to user and skip descendents.
+      // If declaration has type any, log to user and skip descendants.
       if (
         !calculatedDeclarationTypes.has(declaration) ||
         ![...calculatedDeclarationTypes.get(declaration)!].every(type =>
@@ -430,34 +430,34 @@ export class NoImplicitAnyManipulator extends Manipulator {
             ' - ' +
             chalk.red('error') +
             `: Unable to automatically calculate type of '${declaration.getText()}'. This declaration also affects ${
-              descendentDeclarationDependencies.get(declaration)?.size || 0
+              descendantDeclarationDependencies.get(declaration)?.size || 0
             } other declarations.`
         );
 
         // Remove declaration and descendants from calculatedDeclarationTypes.
         calculatedDeclarationTypes.delete(declaration);
-        descendentDeclarationDependencies
+        descendantDeclarationDependencies
           .get(declaration)
-          ?.forEach(descendent => {
-            if (!calculatedDeclarationTypes.has(descendent)) {
-              skipDeclarations.add(descendent);
+          ?.forEach(descendant => {
+            if (!calculatedDeclarationTypes.has(descendant)) {
+              skipDeclarations.add(descendant);
             }
-            calculatedDeclarationTypes.delete(descendent);
+            calculatedDeclarationTypes.delete(descendant);
           });
 
         return;
       }
 
-      // If declaration has determined type, also give descendents the calculated type.
-      descendentDeclarationDependencies
+      // If declaration has determined type, also give descendants the calculated type.
+      descendantDeclarationDependencies
         .get(declaration)
-        ?.forEach(descendent => {
+        ?.forEach(descendant => {
           calculatedDeclarationTypes
             .get(declaration)!
             .forEach(calculatedType => {
               this.addToMapSet(
                 calculatedDeclarationTypes,
-                descendent,
+                descendant,
                 calculatedType
               );
             });
@@ -489,28 +489,28 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
-   * Given a directed graph, constructs a map of vertex to set of descendent vertices with a path from the vertex.
+   * Given a directed graph, constructs a map of vertex to set of descendant vertices with a path from the vertex.
    * @param {Set<T>} vertices - Set of vertices.
    * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
-   * @return {Map<T, Set<T>>} Map of vertex to set of descendent vertices with a path from the vertex.
+   * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
    */
-  private calculateDescendentDependencies<T>(
+  private calculateDescendantDependencies<T>(
     vertices: Set<T>,
     edges: Map<T, Set<T>>
   ): Map<T, Set<T>> {
-    const descendentDependencies = new Map<T, Set<T>>();
+    const descendantDependencies = new Map<T, Set<T>>();
 
     vertices.forEach(vertex => {
       const visitedVertices = new Set<T>();
-      const vertexDescendents: T[] = [];
+      const vertexDescendants: T[] = [];
 
-      this.postOrderRecurse(vertex, visitedVertices, vertexDescendents, edges);
-      vertexDescendents.pop();
+      this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
+      vertexDescendants.pop();
 
-      descendentDependencies.set(vertex, new Set(vertexDescendents));
+      descendantDependencies.set(vertex, new Set(vertexDescendants));
     });
 
-    return descendentDependencies;
+    return descendantDependencies;
   }
 
   /**
