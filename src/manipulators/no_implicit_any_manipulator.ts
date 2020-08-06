@@ -78,8 +78,8 @@ export class NoImplicitAnyManipulator extends Manipulator {
       Set<Type>
     >();
 
-    // Graph of dependencies between declarations.
-    const dependencyGraph = new Map<
+    // Map of declarations to their direct dependencies (other declarations).
+    const directDeclarationDependencies = new Map<
       AcceptedDeclaration,
       Set<AcceptedDeclaration>
     >();
@@ -89,7 +89,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       if (Node.isParameterDeclaration(declaration)) {
         this.addFunctionCallDeclarationDependencies(
           declaration,
-          dependencyGraph,
+          directDeclarationDependencies,
           calculatedDeclarationTypes,
           modifiedDeclarations
         );
@@ -98,7 +98,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       // For all declarations, find assignment references.
       this.addAssignmentDeclarationDependencies(
         declaration,
-        dependencyGraph,
+        directDeclarationDependencies,
         calculatedDeclarationTypes,
         modifiedDeclarations
       );
@@ -107,14 +107,14 @@ export class NoImplicitAnyManipulator extends Manipulator {
     // Topologically sort the dependency graph to determine order to expand declarations.
     const sortedDeclarations = this.topoSort(
       modifiedDeclarations,
-      dependencyGraph
+      directDeclarationDependencies
     );
 
     // In topological order, calculate the inferred types of every declaration.
     this.calculateDeclarationTypes(
       calculatedDeclarationTypes,
       sortedDeclarations,
-      dependencyGraph
+      directDeclarationDependencies
     );
 
     // Set each declaration's type to the calculated type.
@@ -171,13 +171,16 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * Inserts the dependency bar -> foo, because the type of foo is dependent on the type of bar.
    *
    * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
   private addAssignmentDeclarationDependencies(
     declaration: AcceptedDeclaration,
-    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    directDeclarationDependencies: Map<
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
+    >,
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
@@ -208,7 +211,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
         assignedValueExpression
       ) {
         this.addDependency(
-          dependencyGraph,
+          directDeclarationDependencies,
           calculatedDeclarationTypes,
           modifiedDeclarations,
           assignedValueExpression,
@@ -226,13 +229,16 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
    *
    * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
   private addFunctionCallDeclarationDependencies(
     declaration: ParameterDeclaration,
-    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    directDeclarationDependencies: Map<
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
+    >,
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
@@ -262,7 +268,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       ) {
         const correspondingArg = args[parameterIndex];
         this.addDependency(
-          dependencyGraph,
+          directDeclarationDependencies,
           calculatedDeclarationTypes,
           modifiedDeclarations,
           correspondingArg,
@@ -284,41 +290,53 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * Eg. function foo(bar) {}; foo(baz);
    * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
    *
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
-   * @param {Node<ts.Node>} predecessor - Declaration that successor is dependent on.
-   * @param {AcceptedDeclaration} successor - Declaration that is dependent on successor.
+   * @param {Node<ts.Node>} predecessorNode - Node that successor is dependent on.
+   * @param {AcceptedDeclaration} successorDeclaration - Declaration that is dependent on successor.
    */
   private addDependency(
-    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>,
+    directDeclarationDependencies: Map<
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
+    >,
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     modifiedDeclarations: Set<AcceptedDeclaration>,
-    predecessor: Node<ts.Node>,
-    successor: AcceptedDeclaration
+    predecessorNode: Node<ts.Node>,
+    successorDeclaration: AcceptedDeclaration
   ): void {
-    // Get predecessor's type and add it to the calculated declaration type of the successor.
-    const calculatedType = this.toTypeList(predecessor.getType());
-    calculatedType.forEach(type => {
-      this.addToMapSet(calculatedDeclarationTypes, successor, type);
-    });
+    const predecessorDeclarations = predecessorNode
+      .getSymbol()
+      ?.getDeclarations();
 
     // If the predecessor's declaration is one of the declarations that is also implicitly any, add
     // in an edge from predecessor -> successor in the dependency graph.
-    if (Node.isIdentifier(predecessor)) {
-      predecessor
-        .getSymbol()
-        ?.getDeclarations()
-        ?.forEach(assignedDeclaration => {
-          if (
-            Node.isVariableDeclaration(assignedDeclaration) ||
-            Node.isParameterDeclaration(assignedDeclaration)
-          ) {
-            if (modifiedDeclarations.has(assignedDeclaration)) {
-              this.addToMapSet(dependencyGraph, assignedDeclaration, successor);
-            }
-          }
-        });
+    if (
+      predecessorDeclarations?.some(
+        predecessorDeclaration =>
+          (Node.isVariableDeclaration(predecessorDeclaration) ||
+            Node.isParameterDeclaration(predecessorDeclaration)) &&
+          modifiedDeclarations.has(predecessorDeclaration)
+      )
+    ) {
+      predecessorDeclarations?.forEach(predecessorDeclaration => {
+        this.addToMapSet(
+          directDeclarationDependencies,
+          predecessorDeclaration,
+          successorDeclaration
+        );
+      });
+    } else {
+      // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
+      const calculatedType = this.toTypeList(predecessorNode.getType());
+      calculatedType.forEach(type => {
+        this.addToMapSet(
+          calculatedDeclarationTypes,
+          successorDeclaration,
+          type
+        );
+      });
     }
   }
 
@@ -332,7 +350,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     for (const [declaration, types] of calculatedDeclarationTypes) {
       // Set declaration type.
       const newDeclaration = declaration.setType(
-        Array.from(types)
+        [...types]
           .map(type =>
             type.getText(
               declaration,
@@ -366,69 +384,133 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * Calculates final inferred declaration types in topological order based on declaration dependencies.
    * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {AcceptedDeclaration[]} sortedDeclarations - Topologically sorted list of declarations.
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} dependencyGraph - Dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    */
   private calculateDeclarationTypes(
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
     sortedDeclarations: AcceptedDeclaration[],
-    dependencyGraph: Map<AcceptedDeclaration, Set<AcceptedDeclaration>>
+    directDeclarationDependencies: Map<
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
+    >
   ) {
-    // Runs code block twice to handle cyclical dependencies between declarations.
-    _.times(2, () => {
-      // Set of declarations to skip because its predecessor had type any.
-      const skipDeclarations = new Set<AcceptedDeclaration>();
+    // Calculate all descendent dependencies (direct and indirect) for every declaration.
+    const descendentDeclarationDependencies = this.calculateDescendentDependencies(
+      new Set(sortedDeclarations),
+      directDeclarationDependencies
+    );
 
-      sortedDeclarations.forEach(declaration => {
-        // If declaration is skipped, also skip its successors.
-        if (skipDeclarations.has(declaration)) {
-          dependencyGraph
-            .get(declaration)
-            ?.forEach(successor => skipDeclarations.add(successor));
-          return;
-        }
+    // Set of declarations to skip because their types are completely dependent on
+    // predecessor types and all their predecessors had type any.
+    const skipDeclarations = new Set<AcceptedDeclaration>();
 
-        // If declaration has type any, output to user and skip successors.
-        if (
-          !calculatedDeclarationTypes.has(declaration) ||
-          Array.from(
-            calculatedDeclarationTypes.get(declaration) || []
-          ).some(type => type.isAny())
-        ) {
-          // TODO: Move console log funcionality to a logger class.
-          console.log(
-            chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
-              ':' +
-              chalk.yellow(`${declaration.getStartLineNumber()}`) +
-              ':' +
-              chalk.yellow(`${declaration.getStartLinePos()}`) +
-              ' - ' +
-              chalk.red('error') +
-              `: Unable to automatically calculate type of '${declaration.getText()}'.`
-          );
+    sortedDeclarations.forEach(declaration => {
+      // If declaration is skipped, also skip its descendents.
+      if (skipDeclarations.has(declaration)) {
+        descendentDeclarationDependencies
+          .get(declaration)
+          ?.forEach(descendent => skipDeclarations.add(descendent));
+        return;
+      }
 
-          calculatedDeclarationTypes.delete(declaration);
-          dependencyGraph.get(declaration)?.forEach(successor => {
-            skipDeclarations.add(successor);
-            calculatedDeclarationTypes.delete(successor);
+      // If declaration has type any, log to user and skip descendents.
+      if (
+        !calculatedDeclarationTypes.has(declaration) ||
+        ![...calculatedDeclarationTypes.get(declaration)!].every(type =>
+          this.isValidType(type)
+        )
+      ) {
+        // TODO: Move console log functionality to a logger class.
+        console.log(
+          chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            `: Unable to automatically calculate type of '${declaration.getText()}'. This declaration also affects ${
+              descendentDeclarationDependencies.get(declaration)?.size || 0
+            } other declarations.`
+        );
+
+        // Remove declaration and descendants from calculatedDeclarationTypes.
+        calculatedDeclarationTypes.delete(declaration);
+        descendentDeclarationDependencies
+          .get(declaration)
+          ?.forEach(descendent => {
+            if (!calculatedDeclarationTypes.has(descendent)) {
+              skipDeclarations.add(descendent);
+            }
+            calculatedDeclarationTypes.delete(descendent);
           });
 
-          return;
-        }
+        return;
+      }
 
-        // If declaration has determined type, also give successors the calculated type.
-        dependencyGraph.get(declaration)?.forEach(successor => {
+      // If declaration has determined type, also give descendents the calculated type.
+      descendentDeclarationDependencies
+        .get(declaration)
+        ?.forEach(descendent => {
           calculatedDeclarationTypes
             .get(declaration)!
             .forEach(calculatedType => {
               this.addToMapSet(
                 calculatedDeclarationTypes,
-                successor,
+                descendent,
                 calculatedType
               );
             });
         });
-      });
     });
+  }
+
+  /**
+   * Returns if type is valid. Currently, "any", "any[]", and "never[]" are invalid.
+   * @param {Type} type - Type to be evaluated.
+   * @return {boolean} True if type is valid.
+   */
+  private isValidType(type: Type): boolean {
+    return this.toTypeList(type).every(subType => {
+      if (subType.isAny()) {
+        return false;
+      }
+
+      if (subType.isArray()) {
+        return !subType
+          .getTypeArguments()
+          .some(
+            arrayType => arrayType.isAny() || arrayType.getText() === 'never'
+          );
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Given a directed graph, constructs a map of vertex to set of descendent vertices with a path from the vertex.
+   * @param {Set<T>} vertices - Set of vertices.
+   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
+   * @return {Map<T, Set<T>>} Map of vertex to set of descendent vertices with a path from the vertex.
+   */
+  private calculateDescendentDependencies<T>(
+    vertices: Set<T>,
+    edges: Map<T, Set<T>>
+  ): Map<T, Set<T>> {
+    const descendentDependencies = new Map<T, Set<T>>();
+
+    vertices.forEach(vertex => {
+      const visitedVertices = new Set<T>();
+      const vertexDescendents: T[] = [];
+
+      this.postOrderRecurse(vertex, visitedVertices, vertexDescendents, edges);
+      vertexDescendents.pop();
+
+      descendentDependencies.set(vertex, new Set(vertexDescendents));
+    });
+
+    return descendentDependencies;
   }
 
   /**
