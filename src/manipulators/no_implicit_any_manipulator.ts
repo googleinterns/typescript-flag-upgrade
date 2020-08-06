@@ -20,10 +20,8 @@ import {
   ts,
   SyntaxKind,
   Node,
-  Type,
   VariableDeclaration,
   ParameterDeclaration,
-  TypeFormatFlags,
 } from 'ts-morph';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -75,7 +73,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     // Map from declaration to calculated type of declaration.
     const calculatedDeclarationTypes = new Map<
       AcceptedDeclaration,
-      Set<Type>
+      Set<string>
     >();
 
     // Map of declarations to their direct dependencies (other declarations).
@@ -172,7 +170,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    *
    * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
   private addAssignmentDeclarationDependencies(
@@ -181,7 +179,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       AcceptedDeclaration,
       Set<AcceptedDeclaration>
     >,
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // If declaration has an initialized value, add its type to the calculated declaration types.
@@ -191,7 +189,11 @@ export class NoImplicitAnyManipulator extends Manipulator {
       : undefined;
     if (initializedType) {
       initializedType.forEach(type => {
-        this.addToMapSet(calculatedDeclarationTypes, declaration, type);
+        this.addMultipleToMapSet(
+          calculatedDeclarationTypes,
+          declaration,
+          this.typeToString(type, declaration)
+        );
       });
     }
 
@@ -230,7 +232,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    *
    * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
   private addFunctionCallDeclarationDependencies(
@@ -239,7 +241,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       AcceptedDeclaration,
       Set<AcceptedDeclaration>
     >,
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // Get the parent function declaration
@@ -291,7 +293,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
    *
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    * @param {Node<ts.Node>} predecessorNode - Node that successor is dependent on.
    * @param {AcceptedDeclaration} successorDeclaration - Declaration that is dependent on successor.
@@ -301,7 +303,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       AcceptedDeclaration,
       Set<AcceptedDeclaration>
     >,
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     modifiedDeclarations: Set<AcceptedDeclaration>,
     predecessorNode: Node<ts.Node>,
     successorDeclaration: AcceptedDeclaration
@@ -331,10 +333,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
       const calculatedType = this.toTypeList(predecessorNode.getType());
       calculatedType.forEach(type => {
-        this.addToMapSet(
+        this.addMultipleToMapSet(
           calculatedDeclarationTypes,
           successorDeclaration,
-          type
+          this.typeToString(type, predecessorNode)
         );
       });
     }
@@ -342,25 +344,14 @@ export class NoImplicitAnyManipulator extends Manipulator {
 
   /**
    * Sets declaration types based on calculated declaration types.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    */
   private setDeclarationTypes(
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
   ): void {
     for (const [declaration, types] of calculatedDeclarationTypes) {
       // Set declaration type.
-      const newDeclaration = declaration.setType(
-        [...types]
-          .map(type =>
-            type.getText(
-              declaration,
-              TypeFormatFlags.UseAliasDefinedOutsideCurrentScope |
-                TypeFormatFlags.WriteArrayAsGenericType
-            )
-          )
-          .sort()
-          .join(' | ')
-      );
+      const newDeclaration = declaration.setType([...types].sort().join(' | '));
 
       // Fix missing imports if applicable.
       newDeclaration.getSourceFile().fixMissingImports();
@@ -382,12 +373,12 @@ export class NoImplicitAnyManipulator extends Manipulator {
 
   /**
    * Calculates final inferred declaration types in topological order based on declaration dependencies.
-   * @param {Map<AcceptedDeclaration, Set<Type>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {AcceptedDeclaration[]} sortedDeclarations - Topologically sorted list of declarations.
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    */
   private calculateDeclarationTypes(
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<Type>>,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     sortedDeclarations: AcceptedDeclaration[],
     directDeclarationDependencies: Map<
       AcceptedDeclaration,
@@ -462,29 +453,6 @@ export class NoImplicitAnyManipulator extends Manipulator {
               );
             });
         });
-    });
-  }
-
-  /**
-   * Returns if type is valid. Currently, "any", "any[]", and "never[]" are invalid.
-   * @param {Type} type - Type to be evaluated.
-   * @return {boolean} True if type is valid.
-   */
-  private isValidType(type: Type): boolean {
-    return this.toTypeList(type).every(subType => {
-      if (subType.isAny()) {
-        return false;
-      }
-
-      if (subType.isArray()) {
-        return !subType
-          .getTypeArguments()
-          .some(
-            arrayType => arrayType.isAny() || arrayType.getText() === 'never'
-          );
-      }
-
-      return true;
     });
   }
 
