@@ -45,3 +45,11 @@ function passString(val: string) {
 function passNum(val: string) {
   calledByPassNumAndPassString(val);
 }
+
+//Test: Prevents "any" pollution.
+function passAnyValues(foo: any, bar: any[]) {
+  calledByPassAnyValues(foo);
+  calledByPassAnyValues(bar);
+}
+
+function calledByPassAnyValues(foo) {}
