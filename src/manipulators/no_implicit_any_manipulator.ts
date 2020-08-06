@@ -161,6 +161,63 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
+   * Searches through all references of a parameter declaration and adds edges into the dependency graph
+   * whereever its parent function is being called.
+   *
+   * Eg. function foo(bar) {}; foo(baz);
+   * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
+   *
+   * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
+   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
+   */
+  private addFunctionCallDeclarationDependencies(
+    declaration: ParameterDeclaration,
+    directDeclarationDependencies: Map<
+      AcceptedDeclaration,
+      Set<AcceptedDeclaration>
+    >,
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
+    modifiedDeclarations: Set<AcceptedDeclaration>
+  ): void {
+    // Get the parent function declaration
+    const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
+      SyntaxKind.FunctionDeclaration
+    );
+
+    // Get index of parameter declaration
+    const parameterIndex = parentFunctionDeclaration
+      ?.getParameters()
+      ?.indexOf(declaration);
+
+    // Search for function call references
+    const functionReferences = parentFunctionDeclaration?.findReferencesAsNodes();
+    functionReferences?.forEach(functionReference => {
+      // In call reference, get arguments in those calls
+      const args = functionReference
+        .getParentIfKind(SyntaxKind.CallExpression)
+        ?.getArguments();
+
+      // Add corresponding argument's declaration to the dependency graph
+      if (
+        args &&
+        parameterIndex !== undefined &&
+        args.length > parameterIndex
+      ) {
+        const correspondingArg = args[parameterIndex];
+        this.addDependency(
+          directDeclarationDependencies,
+          calculatedDeclarationTypes,
+          modifiedDeclarations,
+          correspondingArg,
+          declaration
+        );
+      }
+    });
+  }
+
+  /**
    * Searches through all references of a declaration and adds edges into the dependency graph whereever
    * it is assigned to another declaration value.
    *
@@ -216,63 +273,6 @@ export class NoImplicitAnyManipulator extends Manipulator {
           calculatedDeclarationTypes,
           modifiedDeclarations,
           assignedValueExpression,
-          declaration
-        );
-      }
-    });
-  }
-
-  /**
-   * Searches through all references of a parameter declaration and adds edges into the dependency graph
-   * whereever its parent function is being called.
-   *
-   * Eg. function foo(bar) {}; foo(baz);
-   * Inserts the dependency baz -> bar, because the type of bar is dependent on the type of baz.
-   *
-   * @param {AcceptedDeclaration} declaration - Declaration to search assignment references for.
-   * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
-   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
-   * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
-   */
-  private addFunctionCallDeclarationDependencies(
-    declaration: ParameterDeclaration,
-    directDeclarationDependencies: Map<
-      AcceptedDeclaration,
-      Set<AcceptedDeclaration>
-    >,
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
-    modifiedDeclarations: Set<AcceptedDeclaration>
-  ): void {
-    // Get the parent function declaration
-    const parentFunctionDeclaration = declaration.getFirstAncestorByKind(
-      SyntaxKind.FunctionDeclaration
-    );
-
-    // Get index of parameter declaration
-    const parameterIndex = parentFunctionDeclaration
-      ?.getParameters()
-      ?.indexOf(declaration);
-
-    // Search for function call references
-    const functionReferences = parentFunctionDeclaration?.findReferencesAsNodes();
-    functionReferences?.forEach(functionReference => {
-      // In call reference, get arguments in those calls
-      const args = functionReference
-        .getParentIfKind(SyntaxKind.CallExpression)
-        ?.getArguments();
-
-      // Add corresponding argument's declaration to the dependency graph
-      if (
-        args &&
-        parameterIndex !== undefined &&
-        args.length > parameterIndex
-      ) {
-        const correspondingArg = args[parameterIndex];
-        this.addDependency(
-          directDeclarationDependencies,
-          calculatedDeclarationTypes,
-          modifiedDeclarations,
-          correspondingArg,
           declaration
         );
       }
@@ -338,35 +338,6 @@ export class NoImplicitAnyManipulator extends Manipulator {
           this.typeToString(type, predecessorNode)
         );
       });
-    }
-  }
-
-  /**
-   * Sets declaration types based on calculated declaration types.
-   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
-   */
-  private setDeclarationTypes(
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
-  ): void {
-    for (const [declaration, types] of calculatedDeclarationTypes) {
-      // Set declaration type.
-      const newDeclaration = declaration.setType([...types].sort().join(' | '));
-
-      // Fix missing imports if applicable.
-      newDeclaration.getSourceFile().fixMissingImports();
-
-      // Add comment before edited declaration.
-      const modifiedStatement = this.getModifiedStatement(newDeclaration);
-      if (
-        modifiedStatement &&
-        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
-      ) {
-        modifiedStatement.replaceWithText(
-          `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement
-            .getText()
-            .trimLeft()}`
-        );
-      }
     }
   }
 
@@ -456,28 +427,32 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
-   * Given a directed graph, constructs a map of vertex to set of descendant vertices with a path from the vertex.
-   * @param {Set<T>} vertices - Set of vertices.
-   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
-   * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
+   * Sets declaration types based on calculated declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    */
-  private calculateDescendants<T>(
-    vertices: Set<T>,
-    edges: Map<T, Set<T>>
-  ): Map<T, Set<T>> {
-    const descendants = new Map<T, Set<T>>();
+  private setDeclarationTypes(
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
+  ): void {
+    for (const [declaration, types] of calculatedDeclarationTypes) {
+      // Set declaration type.
+      const newDeclaration = declaration.setType([...types].sort().join(' | '));
 
-    vertices.forEach(vertex => {
-      const visitedVertices = new Set<T>();
-      const vertexDescendants: T[] = [];
+      // Fix missing imports if applicable.
+      newDeclaration.getSourceFile().fixMissingImports();
 
-      this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
-      vertexDescendants.pop();
-
-      descendants.set(vertex, new Set(vertexDescendants));
-    });
-
-    return descendants;
+      // Add comment before edited declaration.
+      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      if (
+        modifiedStatement &&
+        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
+      ) {
+        modifiedStatement.replaceWithText(
+          `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement
+            .getText()
+            .trimLeft()}`
+        );
+      }
+    }
   }
 
   /**
@@ -517,5 +492,30 @@ export class NoImplicitAnyManipulator extends Manipulator {
       }
     });
     postOrder.push(vertex);
+  }
+
+  /**
+   * Given a directed graph, constructs a map of vertex to set of descendant vertices with a path from the vertex.
+   * @param {Set<T>} vertices - Set of vertices.
+   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
+   * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
+   */
+  private calculateDescendants<T>(
+    vertices: Set<T>,
+    edges: Map<T, Set<T>>
+  ): Map<T, Set<T>> {
+    const descendants = new Map<T, Set<T>>();
+
+    vertices.forEach(vertex => {
+      const visitedVertices = new Set<T>();
+      const vertexDescendants: T[] = [];
+
+      this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
+      vertexDescendants.pop();
+
+      descendants.set(vertex, new Set(vertexDescendants));
+    });
+
+    return descendants;
   }
 }
