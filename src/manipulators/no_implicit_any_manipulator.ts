@@ -24,7 +24,6 @@ import {
   ParameterDeclaration,
 } from 'ts-morph';
 import chalk from 'chalk';
-import _ from 'lodash';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 
@@ -386,7 +385,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     >
   ) {
     // Calculate all descendant dependencies (direct and indirect) for every declaration.
-    const descendantDeclarationDependencies = this.calculateDescendantDependencies(
+    const descendantDeclarationDependencies = this.calculateDescendants(
       new Set(sortedDeclarations),
       directDeclarationDependencies
     );
@@ -462,11 +461,11 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
    * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
    */
-  private calculateDescendantDependencies<T>(
+  private calculateDescendants<T>(
     vertices: Set<T>,
     edges: Map<T, Set<T>>
   ): Map<T, Set<T>> {
-    const descendantDependencies = new Map<T, Set<T>>();
+    const descendants = new Map<T, Set<T>>();
 
     vertices.forEach(vertex => {
       const visitedVertices = new Set<T>();
@@ -475,10 +474,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
       vertexDescendants.pop();
 
-      descendantDependencies.set(vertex, new Set(vertexDescendants));
+      descendants.set(vertex, new Set(vertexDescendants));
     });
 
-    return descendantDependencies;
+    return descendants;
   }
 
   /**
