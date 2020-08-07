@@ -101,6 +101,7 @@ describe('NoImplicitAnyManipulator', () => {
 
   it('topologically sorts graph', () => {
     const graphs = [
+      // Basic graph
       {
         vertices: new Set(['x', 'y', 'z', 'w']),
         edges: new Map([
@@ -112,6 +113,7 @@ describe('NoImplicitAnyManipulator', () => {
           ['x', 'y', 'w', 'z'],
         ],
       },
+      // Cyclical graph
       {
         vertices: new Set(['x', 'y', 'z', 'w']),
         edges: new Map([
@@ -138,6 +140,7 @@ describe('NoImplicitAnyManipulator', () => {
 
   it('constructs descendants map', () => {
     const graphs = [
+      // Basic graph
       {
         vertices: new Set(['x', 'y', 'z', 'w']),
         edges: new Map([
@@ -151,6 +154,7 @@ describe('NoImplicitAnyManipulator', () => {
           ['w', new Set()],
         ]),
       },
+      // Cyclical graph
       {
         vertices: new Set(['x', 'y', 'z', 'w']),
         edges: new Map([
