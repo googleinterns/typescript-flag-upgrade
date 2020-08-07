@@ -29,7 +29,7 @@ describe('NoImplicitReturnsManipulator', () => {
   let emitter: Emitter;
   let manipulator: NoImplicitReturnsManipulator;
 
-  beforeAll(() => {
+  beforeEach(() => {
     jasmine.addMatchers(SourceFileComparer);
 
     const relativeOutputPath = './ts_upgrade';
