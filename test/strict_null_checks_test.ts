@@ -29,7 +29,7 @@ describe('StrictNullChecksManipulator', () => {
   let emitter: Emitter;
   let manipulator: StrictNullChecksManipulator;
 
-  beforeAll(() => {
+  beforeEach(() => {
     jasmine.addMatchers(SourceFileComparer);
 
     const relativeOutputPath = './ts_upgrade';

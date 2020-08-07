@@ -31,7 +31,7 @@ describe('StrictPropertyInitializationManipulator', () => {
   let emitter: Emitter;
   let manipulators: Manipulator[];
 
-  beforeAll(() => {
+  beforeEach(() => {
     jasmine.addMatchers(SourceFileComparer);
 
     const relativeOutputPath = './ts_upgrade';
