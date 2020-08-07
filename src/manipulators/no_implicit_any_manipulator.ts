@@ -172,7 +172,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
-  private addFunctionCallDeclarationDependencies(
+  addFunctionCallDeclarationDependencies(
     declaration: ParameterDeclaration,
     directDeclarationDependencies: Map<
       AcceptedDeclaration,
@@ -229,7 +229,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
    * @param {Set<AcceptedDeclaration>} modifiedDeclarations - Set of modified declarations (vertices).
    */
-  private addAssignmentDeclarationDependencies(
+  addAssignmentDeclarationDependencies(
     declaration: AcceptedDeclaration,
     directDeclarationDependencies: Map<
       AcceptedDeclaration,
@@ -347,7 +347,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
    * @param {AcceptedDeclaration[]} sortedDeclarations - Topologically sorted list of declarations.
    * @param {Map<AcceptedDeclaration, Set<AcceptedDeclaration>>} directDeclarationDependencies - Direct dependency graph between declarations.
    */
-  private calculateDeclarationTypes(
+  calculateDeclarationTypes(
     calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
     sortedDeclarations: AcceptedDeclaration[],
     directDeclarationDependencies: Map<
@@ -473,6 +473,31 @@ export class NoImplicitAnyManipulator extends Manipulator {
   }
 
   /**
+   * Given a directed graph, constructs a map of vertex to set of descendant vertices with a path from the vertex.
+   * @param {Set<T>} vertices - Set of vertices.
+   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
+   * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
+   */
+  calculateDescendants<T>(
+    vertices: Set<T>,
+    edges: Map<T, Set<T>>
+  ): Map<T, Set<T>> {
+    const descendants = new Map<T, Set<T>>();
+
+    vertices.forEach(vertex => {
+      const visitedVertices = new Set<T>();
+      const vertexDescendants: T[] = [];
+
+      this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
+      vertexDescendants.pop();
+
+      descendants.set(vertex, new Set(vertexDescendants));
+    });
+
+    return descendants;
+  }
+
+  /**
    * Recursively constructs the postorder depth-first traversal.
    * @param {T} vertex - Current vertex.
    * @param {Set<T>} visitedVertices - Set of visited vertices.
@@ -492,30 +517,5 @@ export class NoImplicitAnyManipulator extends Manipulator {
       }
     });
     postOrder.push(vertex);
-  }
-
-  /**
-   * Given a directed graph, constructs a map of vertex to set of descendant vertices with a path from the vertex.
-   * @param {Set<T>} vertices - Set of vertices.
-   * @param {Map<T, Set<T>>} edges - Map of directed edges between vertices.
-   * @return {Map<T, Set<T>>} Map of vertex to set of descendant vertices with a path from the vertex.
-   */
-  private calculateDescendants<T>(
-    vertices: Set<T>,
-    edges: Map<T, Set<T>>
-  ): Map<T, Set<T>> {
-    const descendants = new Map<T, Set<T>>();
-
-    vertices.forEach(vertex => {
-      const visitedVertices = new Set<T>();
-      const vertexDescendants: T[] = [];
-
-      this.postOrderRecurse(vertex, visitedVertices, vertexDescendants, edges);
-      vertexDescendants.pop();
-
-      descendants.set(vertex, new Set(vertexDescendants));
-    });
-
-    return descendants;
   }
 }
