@@ -14,9 +14,6 @@
     limitations under the License.
 */
 
-import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
-import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks_manipulator';
-import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Manipulator} from '@/src/manipulators/manipulator';
 
 describe('Manipulator', () => {

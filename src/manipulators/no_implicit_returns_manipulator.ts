@@ -90,7 +90,10 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           if (
             parent &&
             Node.isBlock(parent) &&
-            this.verifyCommentRange(errorNode, NO_IMPLICIT_RETURNS_COMMENT)
+            Manipulator.verifyCommentRange(
+              errorNode,
+              NO_IMPLICIT_RETURNS_COMMENT
+            )
           ) {
             const index = errorNode.getChildIndex();
             parent.removeStatement(index);

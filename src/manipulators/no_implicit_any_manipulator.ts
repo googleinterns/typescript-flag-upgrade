@@ -281,10 +281,13 @@ export class NoImplicitAnyManipulator extends Manipulator {
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // If declaration has an initialized value, add its type to the calculated declaration types.
-    this.addMultipleToMapSet(
+    Manipulator.addMultipleToMapSet(
       calculatedDeclarationTypes,
       declaration,
-      this.typeToString(declaration.getInitializer()?.getType(), declaration)
+      Manipulator.typeToString(
+        declaration.getInitializer()?.getType(),
+        declaration
+      )
     );
 
     // Find for all assignment references for declaration.
@@ -356,7 +359,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       )
     ) {
       predecessorDeclarations?.forEach(predecessorDeclaration => {
-        this.addToMapSet(
+        Manipulator.addToMapSet(
           directDeclarationDependencies,
           predecessorDeclaration,
           successorDeclaration
@@ -364,10 +367,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     } else {
       // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
-      this.addMultipleToMapSet(
+      Manipulator.addMultipleToMapSet(
         calculatedDeclarationTypes,
         successorDeclaration,
-        this.typeToString(predecessorNode.getType(), predecessorNode)
+        Manipulator.typeToString(predecessorNode.getType(), predecessorNode)
       );
     }
   }
@@ -409,7 +412,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       if (
         !calculatedDeclarationTypes.has(declaration) ||
         ![...calculatedDeclarationTypes.get(declaration)!].every(type =>
-          this.isValidType(type)
+          Manipulator.isValidType(type)
         )
       ) {
         // TODO: Move console log functionality to a logger class.
@@ -447,7 +450,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
           calculatedDeclarationTypes
             .get(declaration)!
             .forEach(calculatedType => {
-              this.addToMapSet(
+              Manipulator.addToMapSet(
                 calculatedDeclarationTypes,
                 descendant,
                 calculatedType
@@ -477,10 +480,15 @@ export class NoImplicitAnyManipulator extends Manipulator {
       modifiedSourceFiles.add(newDeclaration.getSourceFile());
 
       // Add comment before edited declaration.
-      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      const modifiedStatement = Manipulator.getModifiedStatement(
+        newDeclaration
+      );
       if (
         modifiedStatement &&
-        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
+        Manipulator.verifyCommentRange(
+          modifiedStatement,
+          NO_IMPLICIT_ANY_COMMENT
+        )
       ) {
         modifiedStatement.replaceWithText(
           `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement

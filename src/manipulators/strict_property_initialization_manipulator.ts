@@ -88,7 +88,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
         if (
           parent &&
           Node.isPropertyDeclaration(parent) &&
-          this.verifyCommentRange(
+          Manipulator.verifyCommentRange(
             parent,
             STRICT_PROPERTY_INITIALIZATION_COMMENT
           )

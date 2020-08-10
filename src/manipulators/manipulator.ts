@@ -70,7 +70,7 @@ export abstract class Manipulator {
    * @param {string} comment - Comment to look for when parsing leading comment ranges of node.
    * @return {boolean} True if node hasn't been editted before.
    */
-  verifyCommentRange(node: Node<ts.Node>, comment: string): boolean {
+  static verifyCommentRange(node: Node<ts.Node>, comment: string): boolean {
     return !node.getLeadingCommentRanges().some(commentRange => {
       return commentRange.getText().includes(comment);
     });
@@ -82,7 +82,7 @@ export abstract class Manipulator {
    * @param {K} key - Key to insert value at.
    * @param {V} val - Value to insert.
    */
-  addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
+  static addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
     let values: Set<V> | undefined = map.get(key);
     if (!values) {
       values = new Set<V>();
@@ -97,7 +97,11 @@ export abstract class Manipulator {
    * @param {K} key - Key to insert value at.
    * @param {V[]} vals - Values to insert.
    */
-  addMultipleToMapSet<K, V>(map: Map<K, Set<V>>, key: K, vals: V[]): void {
+  static addMultipleToMapSet<K, V>(
+    map: Map<K, Set<V>>,
+    key: K,
+    vals: V[]
+  ): void {
     vals.forEach(val => {
       this.addToMapSet(map, key, val);
     });
@@ -108,7 +112,7 @@ export abstract class Manipulator {
    * @param {Type} type - Input type.
    * @return {Type[]} List of types represented by input type.
    */
-  toTypeList(type: Type): Type[] {
+  static toTypeList(type: Type): Type[] {
     return type.isUnion()
       ? type.getUnionTypes().map(individualType => {
           return individualType.getBaseTypeOfLiteralType();
@@ -121,7 +125,7 @@ export abstract class Manipulator {
    * @param {Node<ts.Node>} node - Modified node.
    * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
    */
-  getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
+  static getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
     if (Node.isStatement(node)) {
       return node;
     }
@@ -136,7 +140,7 @@ export abstract class Manipulator {
    * @param {string} type - Type to be evaluated.
    * @return {boolean} True if type is valid.
    */
-  isValidType(type: string): boolean {
+  static isValidType(type: string): boolean {
     return !type.includes('any') && !type.includes('never');
   }
 
@@ -145,7 +149,10 @@ export abstract class Manipulator {
    * @param {Type<ts.Type>} type - Type to be converted to a string.
    * @return {string[]} String representation of type.
    */
-  typeToString(type?: Type<ts.Type>, enclosingNode?: Node<ts.Node>): string[] {
+  static typeToString(
+    type?: Type<ts.Type>,
+    enclosingNode?: Node<ts.Node>
+  ): string[] {
     if (!type) {
       return [];
     }
