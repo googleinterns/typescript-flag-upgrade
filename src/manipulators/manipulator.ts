@@ -135,7 +135,11 @@ export abstract class Manipulator {
    * @param {Type<ts.Type>} type - Type to be converted to a string.
    * @return {string[]} String representation of type.
    */
-  typeToString(type: Type<ts.Type>, enclosingNode?: Node<ts.Node>): string[] {
+  typeToString(type?: Type<ts.Type>, enclosingNode?: Node<ts.Node>): string[] {
+    if (!type) {
+      return [];
+    }
+
     return this.toTypeList(type).map(subType =>
       subType.getText(
         enclosingNode,

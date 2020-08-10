@@ -239,19 +239,11 @@ export class NoImplicitAnyManipulator extends Manipulator {
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // If declaration has an initialized value, add its type to the calculated declaration types.
-    const initializedValue = declaration.getInitializer();
-    const initializedType = initializedValue
-      ? this.toTypeList(initializedValue.getType())
-      : undefined;
-    if (initializedType) {
-      initializedType.forEach(type => {
-        this.addMultipleToMapSet(
-          calculatedDeclarationTypes,
-          declaration,
-          this.typeToString(type, declaration)
-        );
-      });
-    }
+    this.addMultipleToMapSet(
+      calculatedDeclarationTypes,
+      declaration,
+      this.typeToString(declaration.getInitializer()?.getType(), declaration)
+    );
 
     // Find for all assignment references for declaration.
     declaration.findReferencesAsNodes()?.forEach(reference => {
@@ -330,14 +322,11 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     } else {
       // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
-      const calculatedType = this.toTypeList(predecessorNode.getType());
-      calculatedType.forEach(type => {
-        this.addMultipleToMapSet(
-          calculatedDeclarationTypes,
-          successorDeclaration,
-          this.typeToString(type, predecessorNode)
-        );
-      });
+      this.addMultipleToMapSet(
+        calculatedDeclarationTypes,
+        successorDeclaration,
+        this.typeToString(predecessorNode.getType(), predecessorNode)
+      );
     }
   }
 
