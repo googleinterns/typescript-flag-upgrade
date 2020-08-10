@@ -132,18 +132,12 @@ export abstract class Manipulator {
   }
 
   /**
-   * Returns if type is valid. Currently, "any", "any[]", and "never[]" are invalid.
+   * Returns if type is valid. Currently, any type with "any" and "never" is invalid.
    * @param {string} type - Type to be evaluated.
    * @return {boolean} True if type is valid.
    */
   isValidType(type: string): boolean {
-    return !new Set([
-      'any',
-      'Array<never>',
-      'Array<any>',
-      'never[]',
-      'any[]',
-    ]).has(type);
+    return !type.includes('any') && !type.includes('never');
   }
 
   /**
@@ -162,5 +156,78 @@ export abstract class Manipulator {
         TypeFormatFlags.UseAliasDefinedOutsideCurrentScope
       )
     );
+  }
+
+  /**
+   * Parses through a list of types and removes unnecessary types caused by any and never.
+   * @param {string[]} types - List of types.
+   * @return {string[]} List of filtered types.
+   */
+  static filterUnnecessaryTypes(types: Set<string>): Set<string> {
+    if (types.has('any')) {
+      return new Set<string>(['any']);
+    }
+
+    const typeArray = [...types];
+    const unnecessaryTypes = new Set<string>();
+    const newTypes = new Set<string>();
+
+    typeArray.forEach((type, index) => {
+      if (unnecessaryTypes.has(type)) {
+        return;
+      }
+
+      // If the current type contains "never" in a context and another type has the same
+      // context without "never", the current type is not needed
+      // Eg. never[] | string[] -> only string[] is needed
+      // Eg. { foo: never[] } | { foo: string[] } -> only { foo: string[] } is needed
+      let startSearchNeverPos = 0;
+      let matchNeverIndex: number;
+      while (
+        (matchNeverIndex = type.indexOf('never', startSearchNeverPos)) !== -1
+      ) {
+        startSearchNeverPos = matchNeverIndex + 1;
+        typeArray.forEach((otherType, otherIndex) => {
+          // If another type has matching beginnings and endings as the current type but
+          // doesn't have "never", include the other type but not this type
+          if (
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchNeverIndex)) &&
+            otherType.endsWith(type.substring(matchNeverIndex + 5))
+          ) {
+            unnecessaryTypes.add(type);
+            newTypes.delete(type);
+          }
+        });
+      }
+
+      // If another type contains "any" in a context, and the current type has the same
+      // context without "any", the current type is not needed
+      // Eg. any[] | string[] -> only any[] is needed
+      // Eg. { foo: any[] } | { foo: string[] } -> only { foo: any[] } is needed
+      let startSearchAnyPos = 0;
+      let matchAnyIndex: number;
+      while ((matchAnyIndex = type.indexOf('any', startSearchAnyPos)) !== -1) {
+        startSearchAnyPos = matchAnyIndex + 1;
+        typeArray.forEach((otherType, otherIndex) => {
+          // If other types have matching beginnings and endings as the current type but
+          // doesn't have "any", include this type and not the other types
+          if (
+            otherIndex !== index &&
+            otherType.startsWith(type.substring(0, matchAnyIndex)) &&
+            otherType.endsWith(type.substring(matchAnyIndex + 3))
+          ) {
+            unnecessaryTypes.add(otherType);
+            newTypes.delete(otherType);
+          }
+        });
+      }
+
+      if (!unnecessaryTypes.has(type)) {
+        newTypes.add(type);
+      }
+    });
+
+    return newTypes;
   }
 }

@@ -25,7 +25,7 @@ function passesUndefinedVariable() {
 // Test: Add element to empty list
 function addToEmptyList() {
   // typescript-flag-upgrade automated fix: --strictNullChecks
-  const emptyList: any[] = [];
+  const emptyList = [];
   emptyList.push(5);
 }
 

@@ -14,7 +14,6 @@
     limitations under the License.
 */
 
-import _ from 'lodash';
 import {Manipulator} from './manipulator';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {
@@ -22,16 +21,14 @@ import {
   ts,
   SyntaxKind,
   Node,
-  StatementedNode,
   VariableDeclaration,
-  Type,
   ParameterDeclaration,
   PropertyDeclaration,
-  SourceFile,
-  Statement,
   PropertySignature,
+  SourceFile,
 } from 'ts-morph';
 import {Logger} from '@/src/loggers/logger';
+import chalk from 'chalk';
 import {ErrorCodes, STRICT_NULL_CHECKS_COMMENT} from '@/src/types';
 
 type AcceptedDeclaration =
@@ -75,7 +72,7 @@ export class StrictNullChecksManipulator extends Manipulator {
    * @returns {Set<SourceFile>} Set of modified source files.
    */
   fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile> {
-    // Retrieve AST nodes corresponding to diagnostics with relevant error codes
+    // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
     const errorNodes = this.errorDetector.getNodesFromDiagnostics(
       this.errorDetector.filterDiagnosticsByCode(
         diagnostics,
@@ -86,153 +83,72 @@ export class StrictNullChecksManipulator extends Manipulator {
     // Set of modified source files.
     const modifiedSourceFiles = new Set<SourceFile>();
 
-    // Initialize map of declarations to their types
-    const modifiedDeclarationTypes = new Map<
+    // Map from declaration to calculated type of declaration.
+    const calculatedDeclarationTypes = new Map<
       AcceptedDeclaration,
       Set<string>
     >();
 
-    // Keep track of modified statements to insert comments
-    const modifiedStatementedNodes = new Set<[StatementedNode, number]>();
+    // Set of modified nodes.
+    const modifiedNodes = new Set<Node<ts.Node>>();
 
-    // Keep track of which source files have with type never[] arrays have been fixed
-    const fixedNeverTypeSourceFiles = new Set<SourceFile>();
-
-    // Iterate through each node in reverse traversal order to prevent interference
+    // Iterate through each node in reverse traversal order to prevent interference.
     errorNodes.forEach(({node: errorNode, diagnostic: diagnostic}) => {
       switch (diagnostic.getCode()) {
-        // When object is possibly null or undefined
+        // When object is possibly null or undefined.
         case ErrorCodes.ObjectPossiblyNull:
         case ErrorCodes.ObjectPossiblyUndefined:
         case ErrorCodes.ObjectPossiblyNullOrUndefined: {
           this.handlePossiblyNullUndefined(
             errorNode,
             diagnostic,
-            modifiedStatementedNodes
+            modifiedNodes
           );
           break;
         }
 
-        // When two types are not assignable to each other
+        // When two types are not assignable to each other.
         case ErrorCodes.TypeANotAssignableToTypeB: {
           this.handleNonAssignableTypes(
             errorNode,
             diagnostic,
-            modifiedDeclarationTypes,
-            modifiedStatementedNodes
+            calculatedDeclarationTypes,
+            modifiedNodes
           );
           break;
         }
 
-        // When argument and parameter types are not assignable to each other
+        // When argument and parameter types are not assignable to each other.
         case ErrorCodes.ArgumentNotAssignableToParameter:
         case ErrorCodes.NoOverloadMatches: {
           this.handleNonAssignableArgumentTypes(
             errorNode,
             diagnostic,
-            modifiedDeclarationTypes,
-            modifiedStatementedNodes
+            calculatedDeclarationTypes,
+            modifiedNodes
           );
           break;
         }
       }
     });
 
-    errorNodes.forEach(({node: errorNode}) => {
-      this.fixNeverType(
-        errorNode.getSourceFile(),
-        fixedNeverTypeSourceFiles,
-        modifiedDeclarationTypes
-      );
-    });
+    // Set declaration types based on calculated declaration types.
+    this.setDeclarationTypes(calculatedDeclarationTypes, modifiedNodes);
 
-    // Expand all declarations to include the calculated set of types
-    modifiedDeclarationTypes.forEach((types, declaration) => {
-      const oldTypes = this.toTypeList(declaration.getType())
-        .map(type => type.getText(declaration))
-        .sort();
-
-      const newTypes = Array.from(this.filterUnnecessaryTypes(types))
-        .map(type => {
-          return type.replace(new RegExp('never', 'g'), 'any');
-        })
-        .sort();
-
-      // If declaration type has not changed, skip
-      // Otherwise, expand declaration type
-      if (!_.isEqual(oldTypes, newTypes)) {
-        const newDeclaration = declaration.setType(newTypes.join(' | '));
-
-        if (
-          (Node.isPropertyDeclaration(newDeclaration) ||
-            Node.isPropertySignature(newDeclaration)) &&
-          this.verifyCommentRange(newDeclaration, STRICT_NULL_CHECKS_COMMENT)
-        ) {
-          newDeclaration.replaceWithText(
-            `${STRICT_NULL_CHECKS_COMMENT}\n${newDeclaration
-              .getText()
-              .trimLeft()}`
-          );
-        } else {
-          const modifiedStatement = this.getModifiedStatement(newDeclaration);
-          if (modifiedStatement) {
-            this.addModifiedStatement(
-              modifiedStatementedNodes,
-              modifiedStatement
-            );
-          }
-        }
-      }
-    });
-
-    // Insert comment before each modified statement
-    modifiedStatementedNodes.forEach(
-      ([modifiedStatementedNode, indexToInsert]) => {
-        modifiedStatementedNode.insertStatements(
-          indexToInsert,
-          STRICT_NULL_CHECKS_COMMENT
-        );
-      }
-    );
-
-    return modifiedSourceFiles;
-  }
-
-  /**
-   * Fix empty array declaration types to any[] instead of never[].
-   * @param {SourceFile} sourceFile - Source file to fix.
-   * @param {Set<SourceFile>} fixedSourceFiles - Set of source files that have already been fixed.
-   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
-   */
-  private fixNeverType(
-    sourceFile: SourceFile,
-    fixedSourceFiles: Set<SourceFile>,
-    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
-  ): void {
-    // Eg. let foo = []; -> let foo: any[] = [];
-    if (!fixedSourceFiles.has(sourceFile)) {
-      this.getNeverTypeArrayDeclarations(sourceFile).forEach(declaration => {
-        this.addModifiedDeclarationTypes(
-          modifiedDeclarationTypes,
-          declaration,
-          ['any[]']
-        );
-      });
-
-      fixedSourceFiles.add(sourceFile);
-    }
+    // Adding leading comments to all modified nodes.
+    this.addLeadingComments(modifiedNodes);
   }
 
   /**
    * If a variable is possibly undefined or null, add definite assignment assertion.
    * @param {Node<ts.Node>} errorNode - Node of possibly undefined object.
    * @param {Diagnostic} diagnostic - Error diagnostic.
-   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   * @param {Set<Node<ts.Node>} modifiedNodes - Set of modified nodes.
    */
   private handlePossiblyNullUndefined(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
-    modifiedStatementedNodes: Set<[StatementedNode, number]>
+    modifiedNodes: Set<Node<ts.Node>>
   ): void {
     if (!this.nodeKinds.has(errorNode.getKind())) {
       return;
@@ -247,11 +163,7 @@ export class StrictNullChecksManipulator extends Manipulator {
     ) {
       // Eg. foo.toString(); -> foo!.toString()
       const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
-      const modifiedStatement = this.getModifiedStatement(newNode);
-      this.addModifiedStatement(
-        modifiedStatementedNodes,
-        modifiedStatement as Statement
-      );
+      modifiedNodes.add(newNode);
     }
   }
 
@@ -259,43 +171,44 @@ export class StrictNullChecksManipulator extends Manipulator {
    * Handle object being assigned a type not assignable to the declared type by expanding declaration type.
    * @param {Node<ts.Node>} errorNode - Node of object with non assignable type.
    * @param {Diagnostic} diagnostic - Error diagnostic.
-   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
-   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Map of expanded declaration types.
+   * @param {Set<Node<ts.Node>} modifiedNodes - Set of modified nodes.
    */
   private handleNonAssignableTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
-    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
-    modifiedStatementedNodes: Set<[StatementedNode, number]>
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
+    modifiedNodes: Set<Node<ts.Node>>
   ): void {
     if (!this.nodeKinds.has(errorNode.getKind())) {
       return;
     }
 
-    // If node is an object that is assigned an unassiable type
+    // If node is an object that is assigned an unassignable type.
     // Eg. let n = 0; n = undefined; -> let n: number | undefined = 0;
     if (
       (Node.isIdentifier(errorNode) ||
         Node.isPropertyAccessExpression(errorNode)) &&
       diagnostic.getLength() === errorNode.getText().length
     ) {
-      const errorSymbol = errorNode.getSymbol();
-      const declarations = errorSymbol?.getDeclarations();
-
-      // Determine the type that was assigned to the variable/parameter/property
+      // Determine the type that was assigned to the variable/parameter/property.
       const typesToAdd = this.determineAssignedType(errorNode);
 
-      // For each declaration, add the union of all declared and assigned types to modifiedDeclarationTypes
-      declarations?.forEach(declaration => {
-        this.addModifiedDeclarationTypes(
-          modifiedDeclarationTypes,
-          declaration,
-          typesToAdd.map(type => {
-            return type.getText(declaration);
-          })
-        );
-      });
-      // If error node is a return statement, add definite assignment assertion to return value
+      // For each declaration, add the union of all declared and assigned types to calculatedDeclarationTypes
+      errorNode
+        .getSymbol()
+        ?.getDeclarations()
+        ?.forEach(declaration => {
+          this.addMultipleToMapSet(
+            calculatedDeclarationTypes,
+            declaration,
+            this.typeToString(declaration.getType(), declaration).concat(
+              typesToAdd
+            )
+          );
+        });
+
+      // If error node is a return statement, add definite assignment assertion to return value.
       // Eg. return n; -> return n!;
     } else if (Node.isReturnStatement(errorNode)) {
       if (
@@ -303,24 +216,16 @@ export class StrictNullChecksManipulator extends Manipulator {
         (errorNode.getChildCount() === 2 &&
           errorNode.getLastChild()?.getKind() === SyntaxKind.SemicolonToken)
       ) {
-        errorNode = errorNode.replaceWithText('return undefined!;');
-
-        this.addModifiedStatement(
-          modifiedStatementedNodes,
-          errorNode as Statement
-        );
+        const newNode = errorNode.replaceWithText('return undefined!;');
+        modifiedNodes.add(newNode);
       } else if (
         !Node.isNonNullExpression(errorNode.getChildAtIndex(1)) &&
         !errorNode.getChildAtIndex(1).getText().endsWith('!')
       ) {
-        errorNode = errorNode.replaceWithText(
+        const newNode = errorNode.replaceWithText(
           `return (${errorNode.getChildAtIndex(1).getText()})!`
         );
-
-        this.addModifiedStatement(
-          modifiedStatementedNodes,
-          errorNode as Statement
-        );
+        modifiedNodes.add(newNode);
       }
     }
   }
@@ -329,83 +234,66 @@ export class StrictNullChecksManipulator extends Manipulator {
    * Handle argument type not assignable to parameter type.
    * @param {Node<ts.Node>} errorNode - Node of argument with non assignable type.
    * @param {Diagnostic} diagnostic - Error diagnostic.
-   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
-   * @param {Set<[StatementedNode, number]>} modifiedStatementedNodes - Set of modified statements.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Map of expanded declaration types.
+   * @param {Set<Node<ts.Node>} modifiedNodes - Set of modified nodes.
    */
   private handleNonAssignableArgumentTypes(
     errorNode: Node<ts.Node>,
     diagnostic: Diagnostic,
-    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
-    modifiedStatementedNodes: Set<[StatementedNode, number]>
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
+    modifiedNodes: Set<Node<ts.Node>>
   ): void {
     if (diagnostic.getLength() !== errorNode.getText().length) {
       return;
     }
 
-    const childIsFunc =
+    // If argument is a function, add null and undefined types to parameter declaration
+    // Eg. foo(function bar (n: number) {}); -> foo(function bar (n: number | null | undefined) {});
+    const argumentIsFunction =
       errorNode.getFirstChildByKind(SyntaxKind.FunctionDeclaration) ||
       errorNode.getFirstChildByKind(SyntaxKind.ArrowFunction);
 
-    // If argument is a function, add null and undefined types to parameter declaration
-    // Eg. foo(function bar (n: number) {}); -> foo(function bar (n: number | null | undefined) {});
-    if (Node.isCallExpression(errorNode) && childIsFunc) {
-      const parameterDeclaration = childIsFunc.getFirstChildByKind(
+    if (Node.isCallExpression(errorNode) && argumentIsFunction) {
+      const parameterDeclaration = argumentIsFunction.getFirstChildByKind(
         SyntaxKind.Parameter
       );
 
       if (parameterDeclaration) {
-        const declarationType = this.toTypeList(parameterDeclaration.getType());
-
-        declarationType.forEach(type => {
-          this.addToMapSet(
-            modifiedDeclarationTypes,
-            parameterDeclaration,
-            type.getText(parameterDeclaration)
-          );
-        });
-
-        this.addToMapSet(
-          modifiedDeclarationTypes,
+        this.addMultipleToMapSet(
+          calculatedDeclarationTypes,
           parameterDeclaration,
-          'undefined'
-        );
-
-        this.addToMapSet(
-          modifiedDeclarationTypes,
-          parameterDeclaration,
-          'null'
+          this.typeToString(
+            parameterDeclaration.getType(),
+            parameterDeclaration
+          ).concat(['null', 'undefined'])
         );
       }
     } else {
-      // If argument is being called by an empty array, ignore
+      // If argument is being called by an empty array, ignore.
       const callExpressionNode = errorNode.getParentIfKind(
         SyntaxKind.CallExpression
       );
-      const callerType = callExpressionNode
-        ?.getFirstChildIfKind(SyntaxKind.PropertyAccessExpression)
-        ?.getFirstChild()
-        ?.getType()
-        .getText();
 
-      if (callerType === 'never[]') {
+      const callerTypes = this.typeToString(
+        callExpressionNode
+          ?.getFirstChildIfKind(SyntaxKind.PropertyAccessExpression)
+          ?.getFirstChild()
+          ?.getType(),
+        callExpressionNode
+      );
+
+      if (callerTypes.includes('never[]')) {
         return;
       }
 
-      // Otherwise, add definite assignment assertion to the argument being passed
+      // Otherwise, add definite assignment assertion to the argument being passed.
       // Eg. foo(n); -> foo(n!);
       if (
         !Node.isNonNullExpression(errorNode) &&
         !errorNode.getText().endsWith('!')
       ) {
         const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
-
-        const modifiedStatement = this.getModifiedStatement(newNode);
-        if (modifiedStatement) {
-          this.addModifiedStatement(
-            modifiedStatementedNodes,
-            modifiedStatement
-          );
-        }
+        modifiedNodes.add(newNode);
       }
     }
   }
@@ -413,10 +301,10 @@ export class StrictNullChecksManipulator extends Manipulator {
   /**
    * Determines the list of types that a variable, parameter, or property was assigned.
    * @param {Node<ts.Node>} node - Identifier node for variable, parameter, or property.
-   * @return {Type[]} List of types assigned to input variable, parameter, or property.
+   * @return {string[]} List of types assigned to input variable, parameter, or property.
    */
-  private determineAssignedType(node: Node<ts.Node>): Type[] {
-    let assignedTypes: Type[] = [];
+  private determineAssignedType(node: Node<ts.Node>): string[] {
+    let assignedTypes: string[] = [];
 
     const binaryExpressionNode = node.getParentIfKind(
       SyntaxKind.BinaryExpression
@@ -430,161 +318,84 @@ export class StrictNullChecksManipulator extends Manipulator {
       binaryExpressionOperator?.getKind() === SyntaxKind.EqualsToken &&
       assignedValueExpression
     ) {
-      assignedTypes = this.toTypeList(assignedValueExpression.getType());
+      assignedTypes = this.typeToString(
+        assignedValueExpression.getType(),
+        assignedValueExpression
+      );
     }
 
     return assignedTypes;
   }
 
   /**
-   * Returns list of array declarations with type never[].
-   * @param {SourceFile} sourceFile - Source file to search through.
-   * @return {Set<Node<ts.Node>>} Set of array declarations with type never[].
+   * Sets declaration types based on calculated declaration types.
+   * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Set<Node<ts.Node>} modifiedNodes - Set of modified nodes.
    */
-  private getNeverTypeArrayDeclarations(
-    sourceFile: SourceFile
-  ): Set<Node<ts.Node>> {
-    const neverTypeArrayDeclarations = new Set<Node<ts.Node>>();
+  private setDeclarationTypes(
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
+    modifiedNodes: Set<Node<ts.Node>>
+  ): void {
+    // Expand all declarations to include the calculated set of types
+    for (const [declaration, types] of calculatedDeclarationTypes) {
+      const oldTypes = this.typeToString(declaration.getType(), declaration)
+        .sort()
+        .join(' | ');
 
-    sourceFile.forEachDescendant(descendant => {
-      if (
-        (Node.isIdentifier(descendant) ||
-          Node.isPropertyAccessExpression(descendant)) &&
-        descendant.getType().getText(descendant) === 'never[]'
-      ) {
-        descendant
-          .getSymbol()
-          ?.getDeclarations()
-          .forEach(declaration => neverTypeArrayDeclarations.add(declaration));
+      if ([...types].some(type => !this.isValidType(type))) {
+        // TODO: Move console log functionality to a logger class.
+        console.log(
+          chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${declaration.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            `: Unable to automatically calculate type of '${declaration.getText()}'.`
+        );
+        continue;
       }
-    });
+      const newTypes = [...types].sort().join(' | ');
 
-    return neverTypeArrayDeclarations;
+      // If declaration type has not changed, skip.
+      // Otherwise, expand declaration type.
+      if (oldTypes !== newTypes && Node.isTypedNode(declaration)) {
+        const newDeclaration = declaration.setType(newTypes);
+        modifiedNodes.add(newDeclaration);
+      }
+    }
   }
 
   /**
-   * Adds a list of types to a map of expanded declaration types.
-   * @param {Map<AcceptedDeclaration, Set<string>>} modifiedDeclarationTypes - Map of expanded declaration types.
-   * @param {Node<ts.Node>} declaration - Declaration node to add type to.
-   * @param {string[]} typesToAdd - List of types to add to declaration.
+   * Adds leading comments to each modified node.
+   * @param {Set<Node<ts.Node>} modifiedNodes - Set of modified nodes.
    */
-  private addModifiedDeclarationTypes(
-    modifiedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
-    declaration: Node<ts.Node>,
-    typesToAdd: string[]
-  ): void {
-    if (
-      Node.isVariableDeclaration(declaration) ||
-      Node.isParameterDeclaration(declaration) ||
-      Node.isPropertyDeclaration(declaration) ||
-      Node.isPropertySignature(declaration)
-    ) {
-      const declarationType = this.toTypeList(declaration.getType());
+  private addLeadingComments(modifiedNodes: Set<Node<ts.Node>>): void {
+    const modifiedStatements = new Set<Node<ts.Node>>();
 
-      declarationType.forEach(type => {
-        this.addToMapSet(
-          modifiedDeclarationTypes,
-          declaration,
-          type.getText(declaration)
+    modifiedNodes.forEach(modifiedNode => {
+      const modifiedStatement =
+        Node.isPropertyDeclaration(modifiedNode) ||
+        Node.isPropertySignature(modifiedNode)
+          ? modifiedNode
+          : this.getModifiedStatement(modifiedNode);
+
+      if (modifiedStatement) {
+        modifiedStatements.add(modifiedStatement);
+      }
+    });
+
+    [...modifiedStatements]
+      .filter(modifiedStatement =>
+        this.verifyCommentRange(modifiedStatement, STRICT_NULL_CHECKS_COMMENT)
+      )
+      .forEach(modifiedStatement => {
+        modifiedStatement.replaceWithText(
+          `${STRICT_NULL_CHECKS_COMMENT}\n${modifiedStatement
+            .getText()
+            .trimLeft()}`
         );
       });
-
-      typesToAdd.forEach(type => {
-        this.addToMapSet(modifiedDeclarationTypes, declaration, type);
-      });
-    }
-  }
-
-  /**
-   * Adds to the list of modified statements to insert comments before.
-   * @param {Set<[StatementedNode, number]>} statementedNotes - Set of (statemented node, index to insert at) pairs.
-   * @param {Statement} statement - Modified statement.
-   */
-  private addModifiedStatement(
-    statementedNotes: Set<[StatementedNode, number]>,
-    statement: Statement
-  ): void {
-    const parent = statement.getParent();
-
-    if (
-      parent &&
-      Node.isStatementedNode(parent) &&
-      this.verifyCommentRange(statement, STRICT_NULL_CHECKS_COMMENT)
-    ) {
-      statementedNotes.add([parent, statement.getChildIndex()]);
-    }
-  }
-
-  /**
-   * Parses through a list of types and removes unnecessary types caused by any and never.
-   * @param {string[]} types - List of types.
-   * @return {string[]} List of filtered types.
-   */
-  filterUnnecessaryTypes(types: Set<string>): Set<string> {
-    if (types.has('any')) {
-      return new Set<string>(['any']);
-    }
-
-    const typeArray = Array.from(types);
-    const unnecessaryTypes = new Set<string>();
-    const newTypes = new Set<string>();
-
-    typeArray.forEach((type, index) => {
-      if (unnecessaryTypes.has(type)) {
-        return;
-      }
-
-      // If the current type contains "never" in a context and another type has the same
-      // context without "never", the current type is not needed
-      // Eg. never[] | string[] -> only string[] is needed
-      // Eg. { foo: never[] } | { foo: string[] } -> only { foo: string[] } is needed
-      let startSearchNeverPos = 0;
-      let matchNeverIndex: number;
-      while (
-        (matchNeverIndex = type.indexOf('never', startSearchNeverPos)) !== -1
-      ) {
-        startSearchNeverPos = matchNeverIndex + 1;
-        typeArray.forEach((otherType, otherIndex) => {
-          // If another type has matching beginnings and endings as the current type but
-          // doesn't have "never", include the other type but not this type
-          if (
-            otherIndex !== index &&
-            otherType.startsWith(type.substring(0, matchNeverIndex)) &&
-            otherType.endsWith(type.substring(matchNeverIndex + 5))
-          ) {
-            unnecessaryTypes.add(type);
-            newTypes.delete(type);
-          }
-        });
-      }
-
-      // If another type contains "any" in a context, and the current type has the same
-      // context without "any", the current type is not needed
-      // Eg. any[] | string[] -> only any[] is needed
-      // Eg. { foo: any[] } | { foo: string[] } -> only { foo: any[] } is needed
-      let startSearchAnyPos = 0;
-      let matchAnyIndex: number;
-      while ((matchAnyIndex = type.indexOf('any', startSearchAnyPos)) !== -1) {
-        startSearchAnyPos = matchAnyIndex + 1;
-        typeArray.forEach((otherType, otherIndex) => {
-          // If other types have matching beginnings and endings as the current type but
-          // doesn't have "any", include this type and not the other types
-          if (
-            otherIndex !== index &&
-            otherType.startsWith(type.substring(0, matchAnyIndex)) &&
-            otherType.endsWith(type.substring(matchAnyIndex + 3))
-          ) {
-            unnecessaryTypes.add(otherType);
-            newTypes.delete(otherType);
-          }
-        });
-      }
-
-      if (!unnecessaryTypes.has(type)) {
-        newTypes.add(type);
-      }
-    });
-
-    return newTypes;
   }
 }
