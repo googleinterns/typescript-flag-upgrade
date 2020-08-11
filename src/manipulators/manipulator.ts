@@ -14,7 +14,7 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, Node} from 'ts-morph';
+import {Diagnostic, ts, Node, Type, Statement, TypeFormatFlags} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 
 /** Base class for manipulating AST to fix for flags. */
@@ -58,5 +58,93 @@ export abstract class Manipulator {
     return !node.getLeadingCommentRanges().some(commentRange => {
       return commentRange.getText().includes(comment);
     });
+  }
+
+  /**
+   * Adds value to a Map with Set value types.
+   * @param {Map<K, Set<V>>} map - Map to add to.
+   * @param {K} key - Key to insert value at.
+   * @param {V} val - Value to insert.
+   */
+  addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
+    let values: Set<V> | undefined = map.get(key);
+    if (!values) {
+      values = new Set<V>();
+      map.set(key, values);
+    }
+    values.add(val);
+  }
+
+  /**
+   * Adds multiple values to a Map with Set value types.
+   * @param {Map<K, Set<V>>} map - Map to add to.
+   * @param {K} key - Key to insert value at.
+   * @param {V[]} vals - Values to insert.
+   */
+  addMultipleToMapSet<K, V>(map: Map<K, Set<V>>, key: K, vals: V[]): void {
+    vals.forEach(val => {
+      this.addToMapSet(map, key, val);
+    });
+  }
+
+  /**
+   * Converts a Union type into a list of base types, if applicable.
+   * @param {Type} type - Input type.
+   * @return {Type[]} List of types represented by input type.
+   */
+  toTypeList(type: Type): Type[] {
+    return type.isUnion()
+      ? type.getUnionTypes().map(individualType => {
+          return individualType.getBaseTypeOfLiteralType();
+        })
+      : [type.getBaseTypeOfLiteralType()];
+  }
+
+  /**
+   * Returns a modified node's closest Statement ancestor, or the node itself if it is Statement.
+   * @param {Node<ts.Node>} node - Modified node.
+   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
+   */
+  getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
+    if (Node.isStatement(node)) {
+      return node;
+    }
+
+    return node.getParentWhile((parent, child) => {
+      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
+    }) as Statement | undefined;
+  }
+
+  /**
+   * Returns if type is valid. Currently, "any", "any[]", and "never[]" are invalid.
+   * @param {string} type - Type to be evaluated.
+   * @return {boolean} True if type is valid.
+   */
+  isValidType(type: string): boolean {
+    return !new Set([
+      'any',
+      'Array<never>',
+      'Array<any>',
+      'never[]',
+      'any[]',
+    ]).has(type);
+  }
+
+  /**
+   * Returns the string representation of a type.
+   * @param {Type<ts.Type>} type - Type to be converted to a string.
+   * @return {string[]} String representation of type.
+   */
+  typeToString(type?: Type<ts.Type>, enclosingNode?: Node<ts.Node>): string[] {
+    if (!type) {
+      return [];
+    }
+
+    return this.toTypeList(type).map(subType =>
+      subType.getText(
+        enclosingNode,
+        TypeFormatFlags.UseAliasDefinedOutsideCurrentScope
+      )
+    );
   }
 }

@@ -70,6 +70,8 @@ export enum ErrorCodes {
   ArgumentNotAssignableToParameter = 2345,
   NoOverloadMatches = 2769,
   PropertyNoInitializer = 2564,
+  VariableImplicitlyAny = 7005,
+  ParameterImplicitlyAny = 7006,
 }
 
 export type DeclarationType = Map<
@@ -86,3 +88,5 @@ export const NO_IMPLICIT_RETURNS_COMMENT =
   '// typescript-flag-upgrade automated fix: --noImplicitReturns';
 export const STRICT_PROPERTY_INITIALIZATION_COMMENT =
   '// typescript-flag-upgrade automated fix: --strictPropertyInitialization';
+export const NO_IMPLICIT_ANY_COMMENT =
+  '// typescript-flag-upgrade automated fix: --noImplicitAny';

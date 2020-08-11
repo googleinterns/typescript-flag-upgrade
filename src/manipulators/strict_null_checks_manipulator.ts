@@ -380,7 +380,10 @@ export class StrictNullChecksManipulator extends Manipulator {
 
       // Otherwise, add definite assignment assertion to the argument being passed
       // Eg. foo(n); -> foo(n!);
-      if (!Node.isNonNullExpression(errorNode)) {
+      if (
+        !Node.isNonNullExpression(errorNode) &&
+        !errorNode.getText().endsWith('!')
+      ) {
         const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
 
         const modifiedStatement = this.getModifiedStatement(newNode);
@@ -411,30 +414,6 @@ export class StrictNullChecksManipulator extends Manipulator {
     }
 
     return assignedTypes;
-  }
-
-  /**
-   * Converts a Union type into a list of base types, if applicable.
-   * @param {Type} type - Input type.
-   * @return {Type[]} List of types represented by input type.
-   */
-  private toTypeList(type: Type): Type[] {
-    return type.isUnion()
-      ? type.getUnionTypes().map(individualType => {
-          return individualType.getBaseTypeOfLiteralType();
-        })
-      : [type.getBaseTypeOfLiteralType()];
-  }
-
-  /**
-   * Traverses through a node's ancestor and returns the closest Statement node.
-   * @param {Node<ts.Node>} node - Modified node.
-   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
-   */
-  private getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
-    return node.getParentWhile((parent, child) => {
-      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
-    }) as Statement;
   }
 
   /**
@@ -513,23 +492,6 @@ export class StrictNullChecksManipulator extends Manipulator {
       this.verifyCommentRange(statement, STRICT_NULL_CHECKS_COMMENT)
     ) {
       statementedNotes.add([parent, statement.getChildIndex()]);
-    }
-  }
-
-  /**
-   * Adds value to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V} val - Value to insert.
-   */
-  private addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
-    if (map.has(key)) {
-      map.get(key)?.add(val);
-    } else {
-      map.set(
-        key,
-        new Set<V>([val])
-      );
     }
   }
 
