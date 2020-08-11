@@ -377,17 +377,19 @@ export class StrictNullChecksManipulator extends Manipulator {
   private addLeadingComments(modifiedNodes: Set<Node<ts.Node>>): void {
     const modifiedStatements = new Set<Node<ts.Node>>();
 
-    modifiedNodes.forEach(modifiedNode => {
-      const modifiedStatement =
-        Node.isPropertyDeclaration(modifiedNode) ||
-        Node.isPropertySignature(modifiedNode)
-          ? modifiedNode
-          : Manipulator.getModifiedStatement(modifiedNode);
+    [...modifiedNodes]
+      .filter(modifiedNode => !modifiedNode.wasForgotten())
+      .forEach(modifiedNode => {
+        const modifiedStatement =
+          Node.isPropertyDeclaration(modifiedNode) ||
+          Node.isPropertySignature(modifiedNode)
+            ? modifiedNode
+            : Manipulator.getModifiedStatement(modifiedNode);
 
-      if (modifiedStatement) {
-        modifiedStatements.add(modifiedStatement);
-      }
-    });
+        if (modifiedStatement) {
+          modifiedStatements.add(modifiedStatement);
+        }
+      });
 
     [...modifiedStatements]
       .filter(modifiedStatement =>
