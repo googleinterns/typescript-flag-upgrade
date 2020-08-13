@@ -18,6 +18,7 @@ import {Manipulator} from './manipulator';
 import {Diagnostic, ts, SyntaxKind, Node, Identifier} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from '@/src/types';
+import {Logger} from '@/src/loggers/logger';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
@@ -26,9 +27,10 @@ import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from '@/src/types';
 export class StrictPropertyInitializationManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
-  constructor(errorDetector: ErrorDetector) {
+  constructor(errorDetector: ErrorDetector, logger: Logger) {
     super(
       errorDetector,
+      logger,
       new Set<number>([ErrorCodes.PropertyNoInitializer])
     );
     this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);

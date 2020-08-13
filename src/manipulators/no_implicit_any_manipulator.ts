@@ -26,6 +26,7 @@ import {
 import chalk from 'chalk';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
+import {Logger} from '@/src/loggers/logger';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -36,9 +37,10 @@ type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 export class NoImplicitAnyManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
-  constructor(errorDetector: ErrorDetector) {
+  constructor(errorDetector: ErrorDetector, logger: Logger) {
     super(
       errorDetector,
+      logger,
       new Set<number>([
         ErrorCodes.VariableImplicitlyAny,
         ErrorCodes.ParameterImplicitlyAny,
@@ -371,7 +373,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
         )
       ) {
         // TODO: Move console log functionality to a logger class.
-        console.log(
+        this.logger.log(
           chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
             ':' +
             chalk.yellow(`${declaration.getStartLineNumber()}`) +

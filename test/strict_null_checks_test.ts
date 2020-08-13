@@ -22,11 +22,14 @@ import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
 import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks_manipulator';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Emitter} from '@/src/emitters/emitter';
+import {Logger} from '@/src/loggers/logger';
+import {StubLogger} from '@/src/loggers/stub_logger';
 
 describe('StrictNullChecksManipulator', () => {
   let project: Project;
   let errorDetector: ErrorDetector;
   let emitter: Emitter;
+  let logger: Logger;
   let manipulator: StrictNullChecksManipulator;
 
   beforeEach(() => {
@@ -44,7 +47,8 @@ describe('StrictNullChecksManipulator', () => {
     });
     errorDetector = new ProdErrorDetector();
     emitter = new OutOfPlaceEmitter(relativeOutputPath);
-    manipulator = new StrictNullChecksManipulator(errorDetector);
+    logger = new StubLogger();
+    manipulator = new StrictNullChecksManipulator(errorDetector, logger);
   });
 
   const testFiles = [
@@ -88,7 +92,8 @@ describe('StrictNullChecksManipulator', () => {
         /* parser */ undefined,
         errorDetector,
         [manipulator],
-        emitter
+        emitter,
+        logger
       ).run();
 
       const expectedOutput = project.addSourceFileAtPath(

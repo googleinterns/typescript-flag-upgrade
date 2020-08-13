@@ -16,10 +16,12 @@
 
 import {Diagnostic, ts, Node, Type, Statement, TypeFormatFlags} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {Logger} from '@/src/loggers/logger';
 
 /** Base class for manipulating AST to fix for flags. */
 export abstract class Manipulator {
   errorDetector: ErrorDetector;
+  logger: Logger;
   errorCodesToFix: Set<number>;
 
   /**
@@ -27,8 +29,13 @@ export abstract class Manipulator {
    * @param {ErrorDetector} errorDetector - Util class for filtering diagnostics.
    * @param {Set<number>} errorCodesToFix - Codes of compiler flag errors.
    */
-  constructor(errorDetector: ErrorDetector, errorCodesToFix: Set<number>) {
+  constructor(
+    errorDetector: ErrorDetector,
+    logger: Logger,
+    errorCodesToFix: Set<number>
+  ) {
     this.errorDetector = errorDetector;
+    this.logger = logger;
     this.errorCodesToFix = errorCodesToFix;
   }
 

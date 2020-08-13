@@ -18,17 +18,18 @@ import path from 'path';
 import _ from 'lodash';
 import {Project, ts} from 'ts-morph';
 import {ArgumentOptions, DEFAULT_ARGS} from './types';
-import {Emitter} from './emitters/emitter';
+import {Parser} from './parser';
+import {Manipulator} from './manipulators/manipulator';
 import {NoImplicitReturnsManipulator} from './manipulators/no_implicit_returns_manipulator';
 import {NoImplicitAnyManipulator} from './manipulators/no_implicit_any_manipulator';
 import {StrictNullChecksManipulator} from './manipulators/strict_null_checks_manipulator';
 import {StrictPropertyInitializationManipulator} from './manipulators/strict_property_initialization_manipulator';
-import {Parser} from './parser';
-import {Manipulator} from './manipulators/manipulator';
-import {OutOfPlaceEmitter} from './emitters/out_of_place_emitter';
 import {ErrorDetector} from './error_detectors/error_detector';
 import {ProdErrorDetector} from './error_detectors/prod_error_detector';
-import {InPlaceEmitter} from 'src/emitters/in_place_emitter';
+import {Emitter} from './emitters/emitter';
+import {InPlaceEmitter} from './emitters/in_place_emitter';
+import {Logger} from './loggers/logger';
+import {ConsoleLogger} from './loggers/console_logger';
 
 /** Class responsible for running the execution of the tool. */
 export class Runner {
@@ -36,7 +37,7 @@ export class Runner {
 
   private parser: Parser;
   private emitter: Emitter;
-
+  private logger: Logger;
   private errorDetector: ErrorDetector;
 
   private manipulators: Manipulator[];
@@ -49,6 +50,7 @@ export class Runner {
    * @param {ErrorDetector} errorDetector - Error detector to override arguments.
    * @param {Manipulator[]} manipulators - List of manipulators to override arguments.
    * @param {Emitter} emitter - Emitter to override arguments.
+   * @param {Logger} logger - Logger to override arguments.
    */
   constructor(
     args?: ArgumentOptions,
@@ -56,7 +58,8 @@ export class Runner {
     parser?: Parser,
     errorDetector?: ErrorDetector,
     manipulators?: Manipulator[],
-    emitter?: Emitter
+    emitter?: Emitter,
+    logger?: Logger
   ) {
     args = args || DEFAULT_ARGS;
     this.parser = parser || new Parser();
@@ -67,11 +70,15 @@ export class Runner {
       this.project = this.createProject(args);
     }
     this.errorDetector = errorDetector || new ProdErrorDetector();
+    this.logger = logger || new ConsoleLogger();
     this.manipulators = manipulators || [
-      new NoImplicitReturnsManipulator(this.errorDetector),
-      new StrictPropertyInitializationManipulator(this.errorDetector),
-      new StrictNullChecksManipulator(this.errorDetector),
-      new NoImplicitAnyManipulator(this.errorDetector),
+      new NoImplicitReturnsManipulator(this.errorDetector, this.logger),
+      new StrictPropertyInitializationManipulator(
+        this.errorDetector,
+        this.logger
+      ),
+      new StrictNullChecksManipulator(this.errorDetector, this.logger),
+      new NoImplicitAnyManipulator(this.errorDetector, this.logger),
     ];
     this.emitter = emitter || new InPlaceEmitter();
   }
@@ -81,7 +88,7 @@ export class Runner {
    */
   run() {
     const sourceFiles = this.project.getSourceFiles();
-    console.log(
+    this.logger.log(
       sourceFiles.map(file => {
         return file.getFilePath();
       })
