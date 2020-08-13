@@ -44,9 +44,14 @@ export class NoImplicitAnyManipulator extends Manipulator {
       new Set<number>([
         ErrorCodes.VariableImplicitlyAny,
         ErrorCodes.ParameterImplicitlyAny,
+        ErrorCodes.ObjectPropertyImplicitlyAny,
+        ErrorCodes.ReturnTypeImplicitlyAny,
       ])
     );
-    this.nodeKinds = new Set<SyntaxKind>([SyntaxKind.Identifier]);
+    this.nodeKinds = new Set<SyntaxKind>([
+      SyntaxKind.Identifier,
+      SyntaxKind.ElementAccessExpression,
+    ]);
   }
 
   /**
@@ -143,19 +148,49 @@ export class NoImplicitAnyManipulator extends Manipulator {
   ): Set<AcceptedDeclaration> {
     const declarations = new Set<AcceptedDeclaration>();
 
-    nodeDiagnostics.forEach(({node: node}) => {
-      if (Node.isIdentifier(node)) {
-        node
-          .getSymbol()
-          ?.getDeclarations()
-          ?.filter(
-            declaration =>
-              Node.isVariableDeclaration(declaration) ||
-              Node.isParameterDeclaration(declaration)
-          )
-          ?.forEach(declaration => {
-            declarations.add(declaration as AcceptedDeclaration);
-          });
+    nodeDiagnostics.forEach(({node: node, diagnostic: diagnostic}) => {
+      switch (diagnostic.getCode()) {
+        case ErrorCodes.ReturnTypeImplicitlyAny: {
+          // TODO: Move console log functionality to a logger class.
+          console.log(
+            chalk.cyan(`${node.getSourceFile().getFilePath()}`) +
+              ':' +
+              chalk.yellow(`${node.getStartLineNumber()}`) +
+              ':' +
+              chalk.yellow(`${node.getStartLinePos()}`) +
+              ' - ' +
+              chalk.red('error') +
+              `: Unable to automatically calculate return type of '${node.getText()}'.`
+          );
+          break;
+        }
+        case ErrorCodes.ObjectPropertyImplicitlyAny: {
+          // TODO: Move console log functionality to a logger class.
+          console.log(
+            chalk.cyan(`${node.getSourceFile().getFilePath()}`) +
+              ':' +
+              chalk.yellow(`${node.getStartLineNumber()}`) +
+              ':' +
+              chalk.yellow(`${node.getStartLinePos()}`) +
+              ' - ' +
+              chalk.red('error') +
+              `: Unable to automatically object property type of '${node.getText()}'. Object types are not yet supported by this tool.`
+          );
+          break;
+        }
+        default: {
+          node
+            .getSymbol()
+            ?.getDeclarations()
+            ?.filter(
+              declaration =>
+                Node.isVariableDeclaration(declaration) ||
+                Node.isParameterDeclaration(declaration)
+            )
+            ?.forEach(declaration => {
+              declarations.add(declaration as AcceptedDeclaration);
+            });
+        }
       }
     });
 

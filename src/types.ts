@@ -60,6 +60,8 @@ export enum ErrorCodes {
   PropertyNoInitializer = 2564,
   VariableImplicitlyAny = 7005,
   ParameterImplicitlyAny = 7006,
+  ReturnTypeImplicitlyAny = 7010,
+  ObjectPropertyImplicitlyAny = 7053,
 }
 
 export type DeclarationType = Map<
