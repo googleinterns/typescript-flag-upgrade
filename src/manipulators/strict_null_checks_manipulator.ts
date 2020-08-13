@@ -30,6 +30,7 @@ import {
 import {Logger} from '@/src/loggers/logger';
 import chalk from 'chalk';
 import {ErrorCodes, STRICT_NULL_CHECKS_COMMENT} from '@/src/types';
+import {CollectionsUtil} from '@/src/util/collections_util';
 
 type AcceptedDeclaration =
   | VariableDeclaration
@@ -199,7 +200,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         .getSymbol()
         ?.getDeclarations()
         ?.forEach(declaration => {
-          Manipulator.addMultipleToMapSet(
+          CollectionsUtil.addMultipleToMapSet(
             calculatedDeclarationTypes,
             declaration,
             Manipulator.typeToString(declaration.getType(), declaration).concat(
@@ -259,7 +260,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       );
 
       if (parameterDeclaration) {
-        Manipulator.addMultipleToMapSet(
+        CollectionsUtil.addMultipleToMapSet(
           calculatedDeclarationTypes,
           parameterDeclaration,
           Manipulator.typeToString(

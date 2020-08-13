@@ -77,37 +77,6 @@ export abstract class Manipulator {
   }
 
   /**
-   * Adds value to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V} val - Value to insert.
-   */
-  static addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
-    let values: Set<V> | undefined = map.get(key);
-    if (!values) {
-      values = new Set<V>();
-      map.set(key, values);
-    }
-    values.add(val);
-  }
-
-  /**
-   * Adds multiple values to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V[]} vals - Values to insert.
-   */
-  static addMultipleToMapSet<K, V>(
-    map: Map<K, Set<V>>,
-    key: K,
-    vals: V[]
-  ): void {
-    vals.forEach(val => {
-      this.addToMapSet(map, key, val);
-    });
-  }
-
-  /**
    * Converts a Union type into a list of base types, if applicable.
    * @param {Type} type - Input type.
    * @return {Type[]} List of types represented by input type.
@@ -166,9 +135,9 @@ export abstract class Manipulator {
   }
 
   /**
-   * Parses through a list of types and removes unnecessary types caused by any and never.
-   * @param {string[]} types - List of types.
-   * @return {string[]} List of filtered types.
+   * Parses through a set of types and removes unnecessary types caused by any and never.
+   * @param {Set<string>} types - Set of types.
+   * @return {Set<string>} Set of filtered types.
    */
   static filterUnnecessaryTypes(types: Set<string>): Set<string> {
     if (types.has('any')) {

@@ -25,9 +25,10 @@ import {
   SourceFile,
 } from 'ts-morph';
 import chalk from 'chalk';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
+import {CollectionsUtil} from '@/src/util/collections_util';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -281,7 +282,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // If declaration has an initialized value, add its type to the calculated declaration types.
-    Manipulator.addMultipleToMapSet(
+    CollectionsUtil.addMultipleToMapSet(
       calculatedDeclarationTypes,
       declaration,
       Manipulator.typeToString(
@@ -359,7 +360,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       )
     ) {
       predecessorDeclarations?.forEach(predecessorDeclaration => {
-        Manipulator.addToMapSet(
+        CollectionsUtil.addToMapSet(
           directDeclarationDependencies,
           predecessorDeclaration,
           successorDeclaration
@@ -367,7 +368,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     } else {
       // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
-      Manipulator.addMultipleToMapSet(
+      CollectionsUtil.addMultipleToMapSet(
         calculatedDeclarationTypes,
         successorDeclaration,
         Manipulator.typeToString(predecessorNode.getType(), predecessorNode)
@@ -450,7 +451,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
           calculatedDeclarationTypes
             .get(declaration)!
             .forEach(calculatedType => {
-              Manipulator.addToMapSet(
+              CollectionsUtil.addToMapSet(
                 calculatedDeclarationTypes,
                 descendant,
                 calculatedType
