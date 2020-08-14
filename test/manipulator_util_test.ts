@@ -14,9 +14,9 @@
     limitations under the License.
 */
 
-import {Manipulator} from '@/src/manipulators/manipulator';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
-describe('Manipulator', () => {
+describe('ManipulatorUtil', () => {
   it('correctly filters unnecessary types', () => {
     const typeLists = [
       {in: [], out: []},
@@ -30,9 +30,9 @@ describe('Manipulator', () => {
     ];
 
     for (let typeList of typeLists) {
-      expect(Manipulator.filterUnnecessaryTypes(new Set(typeList.in))).toEqual(
-        new Set(typeList.out)
-      );
+      expect(
+        ManipulatorUtil.filterUnnecessaryTypes(new Set(typeList.in))
+      ).toEqual(new Set(typeList.out));
     }
   });
 });

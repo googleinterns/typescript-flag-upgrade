@@ -29,6 +29,7 @@ import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
 import {CollectionsUtil} from '@/src/util/collections_util';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -285,7 +286,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     CollectionsUtil.addMultipleToMapSet(
       calculatedDeclarationTypes,
       declaration,
-      Manipulator.typeToString(
+      ManipulatorUtil.typeToString(
         declaration.getInitializer()?.getType(),
         declaration
       )
@@ -371,7 +372,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       CollectionsUtil.addMultipleToMapSet(
         calculatedDeclarationTypes,
         successorDeclaration,
-        Manipulator.typeToString(predecessorNode.getType(), predecessorNode)
+        ManipulatorUtil.typeToString(predecessorNode.getType(), predecessorNode)
       );
     }
   }
@@ -413,7 +414,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       if (
         !calculatedDeclarationTypes.has(declaration) ||
         ![...calculatedDeclarationTypes.get(declaration)!].every(type =>
-          Manipulator.isValidType(type)
+          ManipulatorUtil.isValidType(type)
         )
       ) {
         // TODO: Move console log functionality to a logger class.
@@ -481,12 +482,12 @@ export class NoImplicitAnyManipulator extends Manipulator {
       modifiedSourceFiles.add(newDeclaration.getSourceFile());
 
       // Add comment before edited declaration.
-      const modifiedStatement = Manipulator.getModifiedStatement(
+      const modifiedStatement = ManipulatorUtil.getModifiedStatement(
         newDeclaration
       );
       if (
         modifiedStatement &&
-        Manipulator.verifyCommentRange(
+        ManipulatorUtil.verifyCommentRange(
           modifiedStatement,
           NO_IMPLICIT_ANY_COMMENT
         )

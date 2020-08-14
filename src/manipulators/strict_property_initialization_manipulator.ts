@@ -26,6 +26,7 @@ import {
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
 /**
  * Manipulator that fixes for the strictPropertyInitialization compiler flag.
@@ -88,7 +89,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
         if (
           parent &&
           Node.isPropertyDeclaration(parent) &&
-          Manipulator.verifyCommentRange(
+          ManipulatorUtil.verifyCommentRange(
             parent,
             STRICT_PROPERTY_INITIALIZATION_COMMENT
           )

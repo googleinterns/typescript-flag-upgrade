@@ -31,6 +31,7 @@ import {Logger} from '@/src/loggers/logger';
 import chalk from 'chalk';
 import {ErrorCodes, STRICT_NULL_CHECKS_COMMENT} from '@/src/types';
 import {CollectionsUtil} from '@/src/util/collections_util';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
 type AcceptedDeclaration =
   | VariableDeclaration
@@ -203,9 +204,10 @@ export class StrictNullChecksManipulator extends Manipulator {
           CollectionsUtil.addMultipleToMapSet(
             calculatedDeclarationTypes,
             declaration,
-            Manipulator.typeToString(declaration.getType(), declaration).concat(
-              typesToAdd
-            )
+            ManipulatorUtil.typeToString(
+              declaration.getType(),
+              declaration
+            ).concat(typesToAdd)
           );
         });
 
@@ -263,7 +265,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         CollectionsUtil.addMultipleToMapSet(
           calculatedDeclarationTypes,
           parameterDeclaration,
-          Manipulator.typeToString(
+          ManipulatorUtil.typeToString(
             parameterDeclaration.getType(),
             parameterDeclaration
           ).concat(['null', 'undefined'])
@@ -275,7 +277,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         SyntaxKind.CallExpression
       );
 
-      const callerTypes = Manipulator.typeToString(
+      const callerTypes = ManipulatorUtil.typeToString(
         callExpressionNode
           ?.getFirstChildIfKind(SyntaxKind.PropertyAccessExpression)
           ?.getFirstChild()
@@ -319,7 +321,7 @@ export class StrictNullChecksManipulator extends Manipulator {
       binaryExpressionOperator?.getKind() === SyntaxKind.EqualsToken &&
       assignedValueExpression
     ) {
-      assignedTypes = Manipulator.typeToString(
+      assignedTypes = ManipulatorUtil.typeToString(
         assignedValueExpression.getType(),
         assignedValueExpression
       );
@@ -339,14 +341,14 @@ export class StrictNullChecksManipulator extends Manipulator {
   ): void {
     // Expand all declarations to include the calculated set of types
     for (const [declaration, types] of calculatedDeclarationTypes) {
-      const oldTypes = Manipulator.typeToString(
+      const oldTypes = ManipulatorUtil.typeToString(
         declaration.getType(),
         declaration
       )
         .sort()
         .join(' | ');
 
-      if ([...types].some(type => !Manipulator.isValidType(type))) {
+      if ([...types].some(type => !ManipulatorUtil.isValidType(type))) {
         // TODO: Move console log functionality to a logger class.
         console.log(
           chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
@@ -385,7 +387,7 @@ export class StrictNullChecksManipulator extends Manipulator {
           Node.isPropertyDeclaration(modifiedNode) ||
           Node.isPropertySignature(modifiedNode)
             ? modifiedNode
-            : Manipulator.getModifiedStatement(modifiedNode);
+            : ManipulatorUtil.getModifiedStatement(modifiedNode);
 
         if (modifiedStatement) {
           modifiedStatements.add(modifiedStatement);
@@ -394,7 +396,7 @@ export class StrictNullChecksManipulator extends Manipulator {
 
     [...modifiedStatements]
       .filter(modifiedStatement =>
-        Manipulator.verifyCommentRange(
+        ManipulatorUtil.verifyCommentRange(
           modifiedStatement,
           STRICT_NULL_CHECKS_COMMENT
         )

@@ -26,6 +26,7 @@ import {Manipulator} from './manipulator';
 import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from '@/src/types';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Logger} from '@/src/loggers/logger';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
@@ -90,7 +91,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           if (
             parent &&
             Node.isBlock(parent) &&
-            Manipulator.verifyCommentRange(
+            ManipulatorUtil.verifyCommentRange(
               errorNode,
               NO_IMPLICIT_RETURNS_COMMENT
             )
