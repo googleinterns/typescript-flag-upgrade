@@ -5,6 +5,10 @@ import {BasicInterface} from './basic_interface';
  */
 export class BasicClass implements BasicInterface {
   value = true;
-  takeStringSeparateClass(val: string) {}
-  takeObjectSeparateClass(val: BasicInterface) {}
+  returnsString() {
+    return '';
+  }
+  returnsObject() {
+    return new BasicClass();
+  }
 }
