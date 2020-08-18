@@ -151,8 +151,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
     nodeDiagnostics.forEach(({node: node, diagnostic: diagnostic}) => {
       switch (diagnostic.getCode()) {
         case ErrorCodes.ReturnTypeImplicitlyAny: {
-          // TODO: Move console log functionality to a logger class.
-          console.log(
+          this.logger.log(
             chalk.cyan(`${node.getSourceFile().getFilePath()}`) +
               ':' +
               chalk.yellow(`${node.getStartLineNumber()}`) +
@@ -165,8 +164,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
           break;
         }
         case ErrorCodes.ObjectPropertyImplicitlyAny: {
-          // TODO: Move console log functionality to a logger class.
-          console.log(
+          this.logger.log(
             chalk.cyan(`${node.getSourceFile().getFilePath()}`) +
               ':' +
               chalk.yellow(`${node.getStartLineNumber()}`) +
