@@ -70,8 +70,9 @@ export class StrictNullChecksManipulator extends Manipulator {
   /**
    * Manipulates AST of project to fix for the strictNullChecks compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   * @returns {Set<SourceFile>} Set of modified source files.
    */
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile> {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
     const errorNodes = this.errorDetector.getNodesFromDiagnostics(
       this.errorDetector.filterDiagnosticsByCode(
@@ -79,6 +80,9 @@ export class StrictNullChecksManipulator extends Manipulator {
         this.errorCodesToFix
       )
     );
+
+    // Set of modified source files.
+    const modifiedSourceFiles = new Set<SourceFile>();
 
     // Initialize map of declarations to their types
     const modifiedDeclarationTypes: DeclarationType = new Map<
@@ -191,6 +195,8 @@ export class StrictNullChecksManipulator extends Manipulator {
         );
       }
     );
+
+    return modifiedSourceFiles;
   }
 
   /**

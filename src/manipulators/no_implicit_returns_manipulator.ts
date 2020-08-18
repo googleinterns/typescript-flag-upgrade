@@ -14,7 +14,14 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
+import {
+  Diagnostic,
+  ts,
+  Node,
+  SyntaxKind,
+  StatementedNode,
+  SourceFile,
+} from 'ts-morph';
 import {Manipulator} from './manipulator';
 import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from '@/src/types';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
@@ -43,8 +50,9 @@ export class NoImplicitReturnsManipulator extends Manipulator {
   /**
    * Manipulates AST of project to fix for the noImplicitReturns compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
+   * @returns {Set<SourceFile>} Set of modified source files.
    */
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile> {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
     const errorNodes = this.errorDetector.filterDiagnosticsByKind(
       this.errorDetector.getNodesFromDiagnostics(
@@ -55,6 +63,9 @@ export class NoImplicitReturnsManipulator extends Manipulator {
       ),
       this.nodeKinds
     );
+
+    // Set of modified source files.
+    const modifiedSourceFiles = new Set<SourceFile>();
 
     // Iterate through each node in reverse traversal order to prevent interference.
     errorNodes.forEach(({node: errorNode}) => {
@@ -69,6 +80,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
               Node.isMethodDeclaration(parent))
           ) {
             this.addChildReturnStatement(parent);
+            modifiedSourceFiles.add(parent.getSourceFile());
           }
           break;
         }
@@ -83,6 +95,7 @@ export class NoImplicitReturnsManipulator extends Manipulator {
             const index = errorNode.getChildIndex();
             parent.removeStatement(index);
             this.addChildReturnStatement(parent);
+            modifiedSourceFiles.add(parent.getSourceFile());
           }
           break;
         }
@@ -92,11 +105,14 @@ export class NoImplicitReturnsManipulator extends Manipulator {
           const child = errorNode.getLastChildByKind(SyntaxKind.Block);
           if (child) {
             this.addChildReturnStatement(child);
+            modifiedSourceFiles.add(child.getSourceFile());
           }
           break;
         }
       }
     });
+
+    return modifiedSourceFiles;
   }
 
   private addChildReturnStatement(node: StatementedNode): void {
