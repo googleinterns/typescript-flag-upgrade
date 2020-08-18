@@ -28,15 +28,8 @@ export type ArgumentOptions = {
   [x: string]: unknown;
   /** Relative path to TypeScript config file */
   p: string;
-  /**
-   * Option between only leaving comments ('comment') or both comments and
-   * mutative fixes ('all')
-   */
-  m: string;
   /** Override config and specify input directory */
   i?: string;
-  /** Specify file for logging */
-  l?: string;
   _: string[];
   $0: string;
 };
@@ -44,11 +37,6 @@ export type ArgumentOptions = {
 export const DEFAULT_ARGS = {
   /** Relative path to TypeScript config file */
   p: 'tsconfig.json',
-  /**
-   * Option between only leaving comments ('comment') or both comments and
-   * mutative fixes ('all')
-   */
-  m: 'all',
   _: [],
   $0: '',
 };

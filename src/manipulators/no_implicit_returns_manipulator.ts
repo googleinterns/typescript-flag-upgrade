@@ -18,6 +18,7 @@ import {Diagnostic, ts, Node, SyntaxKind, StatementedNode} from 'ts-morph';
 import {Manipulator} from './manipulator';
 import {ErrorCodes, NO_IMPLICIT_RETURNS_COMMENT} from '@/src/types';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
+import {Logger} from '@/src/loggers/logger';
 
 /**
  * Manipulator that fixes for the noImplicitReturns compiler flag.
@@ -26,9 +27,10 @@ import {ErrorDetector} from '@/src/error_detectors/error_detector';
 export class NoImplicitReturnsManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
-  constructor(errorDetector: ErrorDetector) {
+  constructor(errorDetector: ErrorDetector, logger: Logger) {
     super(
       errorDetector,
+      logger,
       new Set<number>([ErrorCodes.CodePathNoReturn])
     );
     this.nodeKinds = new Set<SyntaxKind>([

@@ -22,11 +22,14 @@ import {ProdErrorDetector} from '@/src/error_detectors/prod_error_detector';
 import {NoImplicitReturnsManipulator} from '@/src/manipulators/no_implicit_returns_manipulator';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Emitter} from '@/src/emitters/emitter';
+import {Logger} from '@/src/loggers/logger';
+import {StubLogger} from '@/src/loggers/stub_logger';
 
 describe('NoImplicitReturnsManipulator', () => {
   let project: Project;
   let errorDetector: ErrorDetector;
   let emitter: Emitter;
+  let logger: Logger;
   let manipulator: NoImplicitReturnsManipulator;
 
   beforeEach(() => {
@@ -44,7 +47,8 @@ describe('NoImplicitReturnsManipulator', () => {
     });
     errorDetector = new ProdErrorDetector();
     emitter = new OutOfPlaceEmitter(relativeOutputPath);
-    manipulator = new NoImplicitReturnsManipulator(errorDetector);
+    logger = new StubLogger();
+    manipulator = new NoImplicitReturnsManipulator(errorDetector, logger);
   });
 
   const testFiles = [
@@ -77,7 +81,8 @@ describe('NoImplicitReturnsManipulator', () => {
         /* parser */ undefined,
         errorDetector,
         [manipulator],
-        emitter
+        emitter,
+        logger
       ).run();
 
       const expectedOutput = project.addSourceFileAtPath(

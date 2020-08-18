@@ -31,15 +31,6 @@ const args = yargs
       normalize: true,
       type: 'string',
     },
-    m: {
-      alias: 'mode',
-      demandOption: true,
-      default: DEFAULT_ARGS.m,
-      description:
-        "Option between only leaving comments ('comment') or both comments and mutative fixes ('all')",
-      type: 'string',
-      choices: ['all', 'comment'],
-    },
     i: {
       alias: 'input_directory',
       demandOption: false,
@@ -47,17 +38,8 @@ const args = yargs
       normalize: true,
       type: 'string',
     },
-    l: {
-      alias: 'log_location',
-      demandOption: false,
-      description: 'Specify file for logging',
-      normalize: true,
-      type: 'string',
-    },
   })
-  .usage(
-    'typescript-flag-upgrade -p <path-to-config> [-m <all|comment>] [-i <path-to-input-dir>] [-l <path-to-log>]'
-  )
+  .usage('typescript-flag-upgrade -p <path-to-config> [-i <path-to-input-dir>]')
   .epilogue('Copyright 2020 Google LLC').argv;
 
 new Runner(args).run();

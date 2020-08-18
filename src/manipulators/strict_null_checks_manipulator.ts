@@ -36,6 +36,7 @@ import {
   DeclarationType,
   STRICT_NULL_CHECKS_COMMENT,
 } from '@/src/types';
+import {Logger} from '@/src/loggers/logger';
 
 /**
  * Manipulator that fixes for the strictNullChecks compiler flag.
@@ -44,9 +45,10 @@ import {
 export class StrictNullChecksManipulator extends Manipulator {
   private nodeKinds: Set<SyntaxKind>;
 
-  constructor(errorDetector: ErrorDetector) {
+  constructor(errorDetector: ErrorDetector, logger: Logger) {
     super(
       errorDetector,
+      logger,
       new Set<number>([
         ErrorCodes.ObjectPossiblyNull,
         ErrorCodes.ObjectPossiblyUndefined,

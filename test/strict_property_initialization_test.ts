@@ -24,11 +24,14 @@ import {StrictNullChecksManipulator} from '@/src/manipulators/strict_null_checks
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Emitter} from '@/src/emitters/emitter';
 import {Manipulator} from '@/src/manipulators/manipulator';
+import {Logger} from '@/src/loggers/logger';
+import {StubLogger} from '@/src/loggers/stub_logger';
 
 describe('StrictPropertyInitializationManipulator', () => {
   let project: Project;
   let errorDetector: ErrorDetector;
   let emitter: Emitter;
+  let logger: Logger;
   let manipulators: Manipulator[];
 
   beforeEach(() => {
@@ -47,9 +50,10 @@ describe('StrictPropertyInitializationManipulator', () => {
     });
     errorDetector = new ProdErrorDetector();
     emitter = new OutOfPlaceEmitter(relativeOutputPath);
+    logger = new StubLogger();
     manipulators = [
-      new StrictPropertyInitializationManipulator(errorDetector),
-      new StrictNullChecksManipulator(errorDetector),
+      new StrictPropertyInitializationManipulator(errorDetector, logger),
+      new StrictNullChecksManipulator(errorDetector, logger),
     ];
   });
 
@@ -76,7 +80,8 @@ describe('StrictPropertyInitializationManipulator', () => {
         /* parser */ undefined,
         errorDetector,
         manipulators,
-        emitter
+        emitter,
+        logger
       ).run();
 
       const expectedOutput = project.addSourceFileAtPath(
