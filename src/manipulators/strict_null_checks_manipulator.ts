@@ -349,8 +349,7 @@ export class StrictNullChecksManipulator extends Manipulator {
         .join(' | ');
 
       if ([...types].some(type => !ManipulatorUtil.isValidType(type))) {
-        // TODO: Move console log functionality to a logger class.
-        console.log(
+        this.logger.log(
           chalk.cyan(`${declaration.getSourceFile().getFilePath()}`) +
             ':' +
             chalk.yellow(`${declaration.getStartLineNumber()}`) +
