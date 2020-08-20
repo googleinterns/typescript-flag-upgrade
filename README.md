@@ -23,7 +23,8 @@ More specifically, the mandatory `-p` argument specifies the relative path to th
 
 After running the command, the tool mutatively changes the input TypeScript files to fix for any errors that it found. Before each change, the tool inserts a comment of the form: `// typescript-flag-upgrade automated fix: --[compilerFlag]`.
 
-**Important:** Before running this tool, ensure that your TypeScript project is already compiling with no errors. This means that you should set any compiler flags that are causing errors to `false`. If the input TypeScript project has compiler errors, then this tool will error out and stop execution. After running the tool, reactivate the compiler flags that were originally causing the errors, and the number of errors should have decreased.
+### Prerequisite
+Before running this tool, ensure that your TypeScript project is already compiling with no errors. This means that you should set any compiler flags that are causing errors to `false`. If the input TypeScript project has compiler errors, then this tool will error out and stop execution. After running the tool, reactivate the compiler flags that were originally causing the errors, and the number of errors should have decreased.
 
 For help, run:
 
@@ -41,7 +42,7 @@ This tool was designed, implemented, and tested within a period of 3 months, and
 
 ### Supported Flags and Fixes
 
-Currently, this tool supports fixes for the following compiler flags. For detailed documentation of the exact fixes the tool makes for each flag, see the [Project Design Doc](https://docs.google.com/document/d/1vTxq-TKBYBlSroLHPtLBqOj33sUzoTERjT_ODtIjgI0/edit?usp=sharing).
+Currently, this tool supports fixes for the following compiler flags. For detailed documentation of the exact fixes the tool makes for each flag, see the Project Design Doc.
 
 ##### --noImplicitReturns
 
