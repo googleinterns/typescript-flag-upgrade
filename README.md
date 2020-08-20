@@ -2,6 +2,22 @@
 
 A CLI tool that automatically upgrades TypeScript codebases to conform to strict compiler flags using the `ts-morph` library and TypeScript compiler API.
 
+
+Table of Contents
+=================
+
+  * [Getting Started](#getting-started)
+      * [Usage](#usage)
+      * [Prerequisite](#prerequisite)
+      * [User Flow](#user-flow)
+  * [Developer and Maintenance Guide](#developer-and-maintenance-guide)
+      * [Supported Flags and Fixes](#supported-flags-and-fixes)
+      * [Architecture](#architecture)
+      * [Testing](#testing)
+      * [Linting](#linting)
+  * [Read More](#read-more)
+  * [Source Code Headers](#source-code-headers)  
+
 ## Getting Started
 
 ### Usage
@@ -151,10 +167,7 @@ npm run check
 
 ## Read More
 
-- [Project Design Doc](https://docs.google.com/document/d/1vTxq-TKBYBlSroLHPtLBqOj33sUzoTERjT_ODtIjgI0/edit?usp=sharing) (Accessible by Google org only)
-- [Project Deep Dive](https://docs.google.com/presentation/d/1FXt4BZOYC5X67bVkbNUotMil5rML4UrMelT6hyvjBEs/edit?usp=sharing) (Accessible by Google org only)
-- [Project Proposal](https://docs.google.com/document/d/1_KsE1L8EzdCa91ZJR_sJsKev1OevaJG4P3mA9aPVsxA/edit?usp=sharing) (Accessible by Google org only)
-- [Project Final Presentation](https://docs.google.com/presentation/d/1n0eg7pTR7eGyJ2cMM6EIxZQYWcJawx7IzCg38PT2YSY/edit?usp=sharing) (Accessible by Google org only)
+- [Project Resources (Design Doc, Deep Dive, Proposal, Final Presentation)](https://docs.google.com/document/d/1vTxq-TKBYBlSroLHPtLBqOj33sUzoTERjT_ODtIjgI0/edit?usp=sharing) (Accessible by Google org only)
 - [`ts-morph` Repository](https://github.com/dsherret/ts-morph)
 - [TypeScript Compiler API Documetation](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
 - [TypeScript Compiler Flags Documentation](https://www.typescriptlang.org/docs/handbook/compiler-options.html)
