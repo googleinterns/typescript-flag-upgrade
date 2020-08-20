@@ -12,6 +12,7 @@ Table of Contents
       * [User Flow](#user-flow)
   * [Developer and Maintenance Guide](#developer-and-maintenance-guide)
       * [Supported Flags and Fixes](#supported-flags-and-fixes)
+      * [Unsupported Cases](#unsupported-cases)
       * [Architecture](#architecture)
       * [Testing](#testing)
       * [Linting](#linting)
@@ -50,7 +51,13 @@ npm run dev -- --help
 
 ### User Flow
 
-This tool was designed to be used iteratively as a way to semi-automatically fix and speed up the upgrading process for engineers. After each run, the tool fixes as many errors as possible automatically. For errors that the tool is unable to fix automatically (see Supported Flags and Fixes), the tool logs a message to the engineer detailing the location of the error, as well as the relative priority of the error (based on how many other errors are associated with this location). After fixing the highest priority errors, the engineer can re-run this tool, which will then propogate this fix other errors associated with the high-priority fixes that the engineer just made. This process can be repeated as a way to iteratively upgrade larger TypeScript codebases.
+This tool was designed to be used iteratively as a way to semi-automatically fix and speed up the upgrading process for engineers:
+
+1. The engineer ensures that the TypeScript project is fully compiling with the flags set to false.
+2. The engineer runs the tool on the TypeScript project. During the run, the tool fixes as many errors as possible automatically. For errors that the tool is unable to fix automatically (see Supported Flags and Fixes), the tool logs a message to the engineer detailing the location of the error, as well as the relative priority of the error (based on how many other errors are associated with this location). 
+3. The engineer reads through the log to determine the highest priority errors and fixes to make.
+4. After fixing the highest priority errors, the engineer can re-run this tool, which will then propogate this fix other errors associated with the high-priority fixes that the engineer just made. 
+5. This process can be repeated as a way to iteratively upgrade larger TypeScript codebases.
 
 ## Developer and Maintenance Guide
 
@@ -125,6 +132,14 @@ Unable to automatically calculate type of 'foo'. This declaration also affects 5
 
 The engineer can then parse through these logs to determine which variables are most effective to fix.
 
+In addition, because it was found that Jasmine testing files often containing multiple instances of variable run-time types not matching their compile-time types (caused by functions in the `TestBed` class, which have a compile-time return type of `any`). Also, in multiple test files, there were cases of accessing private methods and fields, which would only be allowed at compile-time for variables of type `any`. Because there are no easy solutions for these cases, the `NoImplicitAnyManipulator` skips fixes for all test files (any file ending in `_test.ts` or `.spec.ts`) in order to prevent making unwanted changes.
+
+### Unsupported Cases
+
+This tool does not support more complex non-scalar types, such as (untyped or empty) arrays and objects. This is mainly due to the complexities of each of these data structures, which require hard-coding to take care of all cases. It was decided to leave these cases up to the engineer to fix with output logs as opposed to attempting to fix for all cases and potentially causing a runtime error.
+
+In addition, this tool prevents `any` pollution. In any cases where the tool deems that a variable is actually type `any`, then it ops to skip the case and log a message instead. Doing so prevents it unintentially spreading the use of `any` throughout the codebase.
+
 ### Architecture
 
 The architecture of this tool was designed to be easily extendible:
@@ -167,7 +182,7 @@ npm run check
 
 ## Read More
 
-- [Project Resources (Design Doc, Deep Dive, Proposal, Final Presentation)](https://docs.google.com/document/d/1vTxq-TKBYBlSroLHPtLBqOj33sUzoTERjT_ODtIjgI0/edit?usp=sharing) (Accessible by Google org only)
+- [Project Resources (Design Doc, Deep Dive, Proposal, Final Presentation)](https://drive.google.com/drive/folders/1tIrUwkRZj-fPlMzmH4NKt9FWMtQyZ3PC?usp=sharing) (Accessible by Google org only)
 - [`ts-morph` Repository](https://github.com/dsherret/ts-morph)
 - [TypeScript Compiler API Documetation](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
 - [TypeScript Compiler Flags Documentation](https://www.typescriptlang.org/docs/handbook/compiler-options.html)
