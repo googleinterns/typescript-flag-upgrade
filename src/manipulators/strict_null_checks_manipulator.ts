@@ -226,9 +226,20 @@ export class StrictNullChecksManipulator extends Manipulator {
         !errorNode.getChildAtIndex(1).getText().endsWith('!')
       ) {
         const newNode = errorNode.replaceWithText(
-          `return (${errorNode.getChildAtIndex(1).getText()})!`
+          `return (${errorNode.getChildAtIndex(1).getText()})!;`
         );
         modifiedNodes.add(newNode);
+      } else {
+        this.logger.log(
+          chalk.cyan(`${errorNode.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            `: Unable to automatically fix --strictNullChecks for '${errorNode.getText()}'.`
+        );
       }
     }
   }
@@ -286,6 +297,16 @@ export class StrictNullChecksManipulator extends Manipulator {
       );
 
       if (callerTypes.includes('never[]')) {
+        this.logger.log(
+          chalk.cyan(`${errorNode.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            ': Unable to support calls on empty array.'
+        );
         return;
       }
 
@@ -297,6 +318,17 @@ export class StrictNullChecksManipulator extends Manipulator {
       ) {
         const newNode = errorNode.replaceWithText(`${errorNode.getText()}!`);
         modifiedNodes.add(newNode);
+      } else {
+        this.logger.log(
+          chalk.cyan(`${errorNode.getSourceFile().getFilePath()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLineNumber()}`) +
+            ':' +
+            chalk.yellow(`${errorNode.getStartLinePos()}`) +
+            ' - ' +
+            chalk.red('error') +
+            `: Unable to automatically fix --strictNullChecks for '${errorNode.getText()}'.`
+        );
       }
     }
   }
