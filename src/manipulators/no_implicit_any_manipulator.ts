@@ -25,9 +25,11 @@ import {
   SourceFile,
 } from 'ts-morph';
 import chalk from 'chalk';
-import {ErrorDetector} from 'src/error_detectors/error_detector';
+import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, NO_IMPLICIT_ANY_COMMENT, NodeDiagnostic} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
+import {CollectionsUtil} from '@/src/util/collections_util';
+import {ManipulatorUtil} from '@/src/util/manipulator_util';
 
 type AcceptedDeclaration = VariableDeclaration | ParameterDeclaration;
 
@@ -281,10 +283,13 @@ export class NoImplicitAnyManipulator extends Manipulator {
     modifiedDeclarations: Set<AcceptedDeclaration>
   ): void {
     // If declaration has an initialized value, add its type to the calculated declaration types.
-    this.addMultipleToMapSet(
+    CollectionsUtil.addMultipleToMapSet(
       calculatedDeclarationTypes,
       declaration,
-      this.typeToString(declaration.getInitializer()?.getType(), declaration)
+      ManipulatorUtil.typeToString(
+        declaration.getInitializer()?.getType(),
+        declaration
+      )
     );
 
     // Find for all assignment references for declaration.
@@ -356,7 +361,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       )
     ) {
       predecessorDeclarations?.forEach(predecessorDeclaration => {
-        this.addToMapSet(
+        CollectionsUtil.addToMapSet(
           directDeclarationDependencies,
           predecessorDeclaration,
           successorDeclaration
@@ -364,10 +369,10 @@ export class NoImplicitAnyManipulator extends Manipulator {
       });
     } else {
       // Otherwise, get predecessor's type and add it to the calculated declaration type of the successor.
-      this.addMultipleToMapSet(
+      CollectionsUtil.addMultipleToMapSet(
         calculatedDeclarationTypes,
         successorDeclaration,
-        this.typeToString(predecessorNode.getType(), predecessorNode)
+        ManipulatorUtil.typeToString(predecessorNode.getType(), predecessorNode)
       );
     }
   }
@@ -409,7 +414,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
       if (
         !calculatedDeclarationTypes.has(declaration) ||
         ![...calculatedDeclarationTypes.get(declaration)!].every(type =>
-          this.isValidType(type)
+          ManipulatorUtil.isValidType(type)
         )
       ) {
         // TODO: Move console log functionality to a logger class.
@@ -447,7 +452,7 @@ export class NoImplicitAnyManipulator extends Manipulator {
           calculatedDeclarationTypes
             .get(declaration)!
             .forEach(calculatedType => {
-              this.addToMapSet(
+              CollectionsUtil.addToMapSet(
                 calculatedDeclarationTypes,
                 descendant,
                 calculatedType
@@ -477,10 +482,15 @@ export class NoImplicitAnyManipulator extends Manipulator {
       modifiedSourceFiles.add(newDeclaration.getSourceFile());
 
       // Add comment before edited declaration.
-      const modifiedStatement = this.getModifiedStatement(newDeclaration);
+      const modifiedStatement = ManipulatorUtil.getModifiedStatement(
+        newDeclaration
+      );
       if (
         modifiedStatement &&
-        this.verifyCommentRange(modifiedStatement, NO_IMPLICIT_ANY_COMMENT)
+        ManipulatorUtil.verifyCommentRange(
+          modifiedStatement,
+          NO_IMPLICIT_ANY_COMMENT
+        )
       ) {
         modifiedStatement.replaceWithText(
           `${NO_IMPLICIT_ANY_COMMENT}\n${modifiedStatement

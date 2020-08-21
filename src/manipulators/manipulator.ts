@@ -14,15 +14,7 @@
     limitations under the License.
 */
 
-import {
-  Diagnostic,
-  ts,
-  Node,
-  Type,
-  Statement,
-  TypeFormatFlags,
-  SourceFile,
-} from 'ts-morph';
+import {Diagnostic, ts, SourceFile} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Logger} from '@/src/loggers/logger';
 
@@ -61,106 +53,5 @@ export abstract class Manipulator {
    */
   hasErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): boolean {
     return this.errorDetector.detectErrors(diagnostics, this.errorCodesToFix);
-  }
-
-  /**
-   * Verifies that a node hasn't been edited before by looking through leading comments and
-   * ensuring that comments weren't left by previous iterations of fixes.
-   * @param {Node<ts.Node>} node - Node to verify.
-   * @param {string} comment - Comment to look for when parsing leading comment ranges of node.
-   * @return {boolean} True if node hasn't been editted before.
-   */
-  verifyCommentRange(node: Node<ts.Node>, comment: string): boolean {
-    return !node.getLeadingCommentRanges().some(commentRange => {
-      return commentRange.getText().includes(comment);
-    });
-  }
-
-  /**
-   * Adds value to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V} val - Value to insert.
-   */
-  addToMapSet<K, V>(map: Map<K, Set<V>>, key: K, val: V): void {
-    let values: Set<V> | undefined = map.get(key);
-    if (!values) {
-      values = new Set<V>();
-      map.set(key, values);
-    }
-    values.add(val);
-  }
-
-  /**
-   * Adds multiple values to a Map with Set value types.
-   * @param {Map<K, Set<V>>} map - Map to add to.
-   * @param {K} key - Key to insert value at.
-   * @param {V[]} vals - Values to insert.
-   */
-  addMultipleToMapSet<K, V>(map: Map<K, Set<V>>, key: K, vals: V[]): void {
-    vals.forEach(val => {
-      this.addToMapSet(map, key, val);
-    });
-  }
-
-  /**
-   * Converts a Union type into a list of base types, if applicable.
-   * @param {Type} type - Input type.
-   * @return {Type[]} List of types represented by input type.
-   */
-  toTypeList(type: Type): Type[] {
-    return type.isUnion()
-      ? type.getUnionTypes().map(individualType => {
-          return individualType.getBaseTypeOfLiteralType();
-        })
-      : [type.getBaseTypeOfLiteralType()];
-  }
-
-  /**
-   * Returns a modified node's closest Statement ancestor, or the node itself if it is Statement.
-   * @param {Node<ts.Node>} node - Modified node.
-   * @return {Statement|undefined} Closest Statement ancestor of modified node or undefined if doesn't exist.
-   */
-  getModifiedStatement(node: Node<ts.Node>): Statement | undefined {
-    if (Node.isStatement(node)) {
-      return node;
-    }
-
-    return node.getParentWhile((parent, child) => {
-      return !(Node.isStatementedNode(parent) && Node.isStatement(child));
-    }) as Statement | undefined;
-  }
-
-  /**
-   * Returns if type is valid. Currently, "any", "any[]", and "never[]" are invalid.
-   * @param {string} type - Type to be evaluated.
-   * @return {boolean} True if type is valid.
-   */
-  isValidType(type: string): boolean {
-    return !new Set([
-      'any',
-      'Array<never>',
-      'Array<any>',
-      'never[]',
-      'any[]',
-    ]).has(type);
-  }
-
-  /**
-   * Returns the string representation of a type.
-   * @param {Type<ts.Type>} type - Type to be converted to a string.
-   * @return {string[]} String representation of type.
-   */
-  typeToString(type?: Type<ts.Type>, enclosingNode?: Node<ts.Node>): string[] {
-    if (!type) {
-      return [];
-    }
-
-    return this.toTypeList(type).map(subType =>
-      subType.getText(
-        enclosingNode,
-        TypeFormatFlags.UseAliasDefinedOutsideCurrentScope
-      )
-    );
   }
 }
