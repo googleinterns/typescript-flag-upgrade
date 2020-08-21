@@ -23,4 +23,24 @@ export abstract class Emitter {
    * @param {Project} project - ts-morph project to be emitted.
    */
   abstract emit(project: Project): void;
+
+  /**
+   * Formats source files given a set of their file paths.
+   * @param sourceFilePaths - Set of file paths of source files to format.
+   * @param project - ts-morph project containing source files.
+   */
+  format(sourceFilePaths: Set<string>, project: Project): void {
+    sourceFilePaths.forEach(sourceFilePath =>
+      project.getSourceFile(sourceFilePath)?.formatText({
+        indentSize: 2,
+        ensureNewLineAtEndOfFile: true,
+        insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
+        insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
+        insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: false,
+        insertSpaceAfterOpeningAndBeforeClosingEmptyBraces: false,
+        insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
+        insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces: false,
+      })
+    );
+  }
 }

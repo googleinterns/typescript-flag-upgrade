@@ -15,7 +15,14 @@
 */
 
 import {Manipulator} from './manipulator';
-import {Diagnostic, ts, SyntaxKind, Node, Identifier} from 'ts-morph';
+import {
+  Diagnostic,
+  ts,
+  SyntaxKind,
+  Node,
+  Identifier,
+  SourceFile,
+} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {ErrorCodes, STRICT_PROPERTY_INITIALIZATION_COMMENT} from '@/src/types';
 import {Logger} from '@/src/loggers/logger';
@@ -39,8 +46,9 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
   /**
    * Manipulates AST of project to fix for the strictPropertyInitialization compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser
+   * @returns {Set<SourceFile>} Set of modified source files.
    */
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile> {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes
     const errorNodes = this.errorDetector.filterDiagnosticsByKind(
       this.errorDetector.getNodesFromDiagnostics(
@@ -51,6 +59,9 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
       ),
       this.nodeKinds
     );
+
+    // Set of modified source files.
+    const modifiedSourceFiles = new Set<SourceFile>();
 
     // Set of identifiers of uninitialized properties to modify type declarations
     const modifiedIdentifiers = new Set<Identifier>();
@@ -71,6 +82,8 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
           `${identifier.getText().trim()}!`
         );
 
+        modifiedSourceFiles.add(newIdentifier.getSourceFile());
+
         const parent = newIdentifier.getParent();
         if (
           parent &&
@@ -88,5 +101,7 @@ export class StrictPropertyInitializationManipulator extends Manipulator {
         }
       }
     });
+
+    return modifiedSourceFiles;
   }
 }

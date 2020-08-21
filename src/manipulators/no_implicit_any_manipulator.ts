@@ -22,6 +22,7 @@ import {
   Node,
   VariableDeclaration,
   ParameterDeclaration,
+  SourceFile,
 } from 'ts-morph';
 import chalk from 'chalk';
 import {ErrorDetector} from 'src/error_detectors/error_detector';
@@ -57,8 +58,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
   /**
    * Manipulates AST of project to fix for the noImplicitAny compiler flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
+   * @return {Set<SourceFile>} Set of modified source files.
    */
-  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void {
+  fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile> {
     // Retrieve AST nodes corresponding to diagnostics with relevant error codes.
     // Filters out errors in test files for this manipulator specifically.
     const errorNodes = this.filterOutTestFiles(
@@ -72,6 +74,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
         this.nodeKinds
       )
     );
+
+    // Set of modified source files.
+    const modifiedSourceFiles = new Set<SourceFile>();
 
     // Get set of declarations with implicit any type.
     const modifiedDeclarations = this.getDeclarations(errorNodes);
@@ -122,7 +127,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
     );
 
     // Set each declaration's type to the calculated type.
-    this.setDeclarationTypes(calculatedDeclarationTypes);
+    this.setDeclarationTypes(calculatedDeclarationTypes, modifiedSourceFiles);
+
+    return modifiedSourceFiles;
   }
 
   /**
@@ -453,9 +460,11 @@ export class NoImplicitAnyManipulator extends Manipulator {
   /**
    * Sets declaration types based on calculated declaration types.
    * @param {Map<AcceptedDeclaration, Set<string>>} calculatedDeclarationTypes - Calculated types for each declaration.
+   * @param {Set<SourceFile>} modifiedSourceFiles - Set of modified source files.
    */
   private setDeclarationTypes(
-    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>
+    calculatedDeclarationTypes: Map<AcceptedDeclaration, Set<string>>,
+    modifiedSourceFiles: Set<SourceFile>
   ): void {
     for (const [declaration, types] of calculatedDeclarationTypes) {
       // Set declaration type.
@@ -463,6 +472,9 @@ export class NoImplicitAnyManipulator extends Manipulator {
 
       // Fix missing imports if applicable.
       newDeclaration.getSourceFile().fixMissingImports();
+
+      // Add source file to modified source files.
+      modifiedSourceFiles.add(newDeclaration.getSourceFile());
 
       // Add comment before edited declaration.
       const modifiedStatement = this.getModifiedStatement(newDeclaration);

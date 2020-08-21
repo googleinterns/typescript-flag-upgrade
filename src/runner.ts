@@ -87,12 +87,16 @@ export class Runner {
    * Runs through execution of parsing, manipulating, and emitting.
    */
   run() {
+    // Log retrieved source files.
     const sourceFiles = this.project.getSourceFiles();
     this.logger.log(
       sourceFiles.map(file => {
         return file.getFilePath();
       })
     );
+
+    // Set of modified source file paths.
+    const modifiedSourceFilePaths = new Set<string>();
 
     // Parse errors, save copy of errors.
     let errors = this.parser.parse(this.project);
@@ -110,7 +114,11 @@ export class Runner {
 
         // If a manipulator detects errors that it can fix, fix them and reparse errors.
         if (manipulator.hasErrors(errors)) {
-          manipulator.fixErrors(errors);
+          manipulator
+            .fixErrors(errors)
+            .forEach(modifiedSourceFile =>
+              modifiedSourceFilePaths.add(modifiedSourceFile.getFilePath())
+            );
           errorsExist = true;
           prevErrors = errors;
           errors = this.parser.parse(this.project);
@@ -125,6 +133,8 @@ export class Runner {
       // TODO: Log if previous errors are same as current errors.
     } while (errorsExist && !_.isEqual(errors, prevErrors));
 
+    // Format and emit project.
+    this.emitter.format(modifiedSourceFilePaths, this.project);
     this.emitter.emit(this.project);
   }
 

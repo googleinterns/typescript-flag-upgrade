@@ -14,7 +14,15 @@
     limitations under the License.
 */
 
-import {Diagnostic, ts, Node, Type, Statement, TypeFormatFlags} from 'ts-morph';
+import {
+  Diagnostic,
+  ts,
+  Node,
+  Type,
+  Statement,
+  TypeFormatFlags,
+  SourceFile,
+} from 'ts-morph';
 import {ErrorDetector} from '@/src/error_detectors/error_detector';
 import {Logger} from '@/src/loggers/logger';
 
@@ -42,8 +50,9 @@ export abstract class Manipulator {
   /**
    * Manipulates AST of project to fix for a specific flag given diagnostics.
    * @param {Diagnostic<ts.Diagnostic>[]} diagnostics - List of diagnostics outputted by parser.
+   * @return {Set<SourceFile>} Set of modified source files.
    */
-  abstract fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): void;
+  abstract fixErrors(diagnostics: Diagnostic<ts.Diagnostic>[]): Set<SourceFile>;
 
   /**
    * Manipulates AST of project to fix for a specific flag given diagnostics.
