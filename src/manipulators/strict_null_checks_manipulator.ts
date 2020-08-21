@@ -82,9 +82,6 @@ export class StrictNullChecksManipulator extends Manipulator {
       )
     );
 
-    // Set of modified source files.
-    const modifiedSourceFiles = new Set<SourceFile>();
-
     // Map from declaration to calculated type of declaration.
     const calculatedDeclarationTypes = new Map<
       AcceptedDeclaration,
@@ -137,8 +134,16 @@ export class StrictNullChecksManipulator extends Manipulator {
     // Set declaration types based on calculated declaration types.
     this.setDeclarationTypes(calculatedDeclarationTypes, modifiedNodes);
 
+    // Add modified source files.
+    const modifiedSourceFiles = new Set<SourceFile>();
+    modifiedNodes.forEach(node =>
+      modifiedSourceFiles.add(node.getSourceFile())
+    );
+
     // Adding leading comments to all modified nodes.
     this.addLeadingComments(modifiedNodes);
+
+    return modifiedSourceFiles;
   }
 
   /**
