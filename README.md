@@ -2,22 +2,21 @@
 
 A CLI tool that automatically upgrades TypeScript codebases to conform to strict compiler flags using the `ts-morph` library and TypeScript compiler API.
 
+## Table of Contents
 
-Table of Contents
-=================
-
-  * [Getting Started](#getting-started)
-      * [Usage](#usage)
-      * [Prerequisite](#prerequisite)
-      * [User Flow](#user-flow)
-  * [Developer and Maintenance Guide](#developer-and-maintenance-guide)
-      * [Supported Flags and Fixes](#supported-flags-and-fixes)
-      * [Unsupported Cases](#unsupported-cases)
-      * [Architecture](#architecture)
-      * [Testing](#testing)
-      * [Linting](#linting)
-  * [Read More](#read-more)
-  * [Source Code Headers](#source-code-headers)  
+- [Getting Started](#getting-started)
+  - [Usage](#usage)
+  - [Prerequisite](#prerequisite)
+  - [User Flow](#user-flow)
+- [Developer and Maintenance Guide](#developer-and-maintenance-guide)
+  - [Supported Flags and Fixes](#supported-flags-and-fixes)
+  - [Removing Flag Fix Functionality](#removing-flag-fix-functionality)
+  - [Unsupported Cases](#unsupported-cases)
+  - [Architecture](#architecture)
+  - [Testing](#testing)
+  - [Linting](#linting)
+- [Read More](#read-more)
+- [Source Code Headers](#source-code-headers)
 
 ## Getting Started
 
@@ -33,15 +32,12 @@ cd typescript-flag-upgrade
 Then run the following command with the corresponding arguments:
 
 ```
-npm run dev -- -p <relative-path-to-tsconfig> [-i <relative-path-to-input-dir>]
+npm run dev -- -p <relative-path-to-tsconfig> [-i <relative-path-to-input-dir>] [-f]
 ```
 
-More specifically, the mandatory `-p` argument specifies the relative path to the `tsconfig.json` file of the TypeScript project to be upgraded. The tool will automatically retrieve all TypeScript files within the project based on the `tsconfig.json`. In the case you want to specify a separate or subdirectory to upgrade, you can specify the optional `-i` flag to override the input directory.
+More specifically, the mandatory `-p` argument specifies the relative path to the `tsconfig.json` file of the TypeScript project to be upgraded. The tool will automatically retrieve all TypeScript files within the project based on the `tsconfig.json`. In the case you want to specify a separate or subdirectory to upgrade, you can specify the optional `-i` flag to override the input directory. The `-f` optional flag specifies whether or not to format the output files.
 
 After running the command, the tool mutatively changes the input TypeScript files to fix for any errors that it found. Before each change, the tool inserts a comment of the form: `// typescript-flag-upgrade automated fix: --[compilerFlag]`.
-
-### Prerequisite
-Before running this tool, ensure that your TypeScript project is already compiling with no errors. This means that you should set any compiler flags that are causing errors to `false`. If the input TypeScript project has compiler errors, then this tool will error out and stop execution. After running the tool, reactivate the compiler flags that were originally causing the errors, and the number of errors should have decreased.
 
 For help, run:
 
@@ -49,19 +45,23 @@ For help, run:
 npm run dev -- --help
 ```
 
+### Prerequisite
+
+Before running this tool, ensure that your TypeScript project is already compiling with no errors. This means that you should set any compiler flags that are causing errors to `false`. If the input TypeScript project has compiler errors, then this tool will error out and stop execution. After running the tool, reactivate the compiler flags that were originally causing the errors, and the number of errors should have decreased.
+
 ### User Flow
 
 This tool was designed to be used iteratively as a way to semi-automatically fix and speed up the upgrading process for engineers:
 
 1. The engineer ensures that the TypeScript project is fully compiling with the flags set to false.
-2. The engineer runs the tool on the TypeScript project. During the run, the tool fixes as many errors as possible automatically. For errors that the tool is unable to fix automatically (see Supported Flags and Fixes), the tool logs a message to the engineer detailing the location of the error, as well as the relative priority of the error (based on how many other errors are associated with this location). 
+2. The engineer runs the tool on the TypeScript project. During the run, the tool fixes as many errors as possible automatically. For errors that the tool is unable to fix automatically (see Supported Flags and Fixes), the tool logs a message to the engineer detailing the location of the error, as well as the relative priority of the error (based on how many other errors are associated with this location).
 3. The engineer reads through the log to determine the highest priority errors and fixes to make.
-4. After fixing the highest priority errors, the engineer can re-run this tool, which will then propogate this fix other errors associated with the high-priority fixes that the engineer just made. 
+4. After fixing the highest priority errors, the engineer can re-run this tool, which will then propogate this fix other errors associated with the high-priority fixes that the engineer just made.
 5. This process can be repeated as a way to iteratively upgrade larger TypeScript codebases.
 
 ## Developer and Maintenance Guide
 
-This tool was designed, implemented, and tested within a period of 3 months, and there are many areas in which it can be improved.
+This tool was designed, implemented, and tested within a period of 3 months, and there are many areas in which it can be improved. Here are the current supported features of this tool, as well as unsupported cases.
 
 ### Supported Flags and Fixes
 
@@ -133,6 +133,13 @@ Unable to automatically calculate type of 'foo'. This declaration also affects 5
 The engineer can then parse through these logs to determine which variables are most effective to fix.
 
 In addition, because it was found that Jasmine testing files often containing multiple instances of variable run-time types not matching their compile-time types (caused by functions in the `TestBed` class, which have a compile-time return type of `any`). Also, in multiple test files, there were cases of accessing private methods and fields, which would only be allowed at compile-time for variables of type `any`. Because there are no easy solutions for these cases, the `NoImplicitAnyManipulator` skips fixes for all test files (any file ending in `_test.ts` or `.spec.ts`) in order to prevent making unwanted changes.
+
+### Removing Flag Fix Functionality
+
+In the case where the fixes for one of the flags is deemed as an additional burden, you can remove that particular flag fix functionality from tool by going through the following steps:
+
+1. In the constructor of `Runner`, remove the corresponding manipulator from the list of manipulators.
+2. In `createProject()` of `Runner`, update the default compiler flag options for the `setCompilerOptions` variable.
 
 ### Unsupported Cases
 

@@ -38,6 +38,13 @@ const args = yargs
       normalize: true,
       type: 'string',
     },
+    f: {
+      alias: 'format',
+      demandOption: false,
+      default: DEFAULT_ARGS.f,
+      description: 'Format emitted files',
+      type: 'boolean',
+    },
   })
   .usage('typescript-flag-upgrade -p <path-to-config> [-i <path-to-input-dir>]')
   .epilogue('Copyright 2020 Google LLC').argv;
