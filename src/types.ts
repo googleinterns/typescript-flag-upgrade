@@ -22,6 +22,8 @@ export type ArgumentOptions = {
   p: string;
   /** Override config and specify input directory */
   i?: string;
+  /** Format emitted files */
+  f?: boolean;
   _: string[];
   $0: string;
 };
@@ -29,6 +31,7 @@ export type ArgumentOptions = {
 export const DEFAULT_ARGS = {
   /** Relative path to TypeScript config file */
   p: 'tsconfig.json',
+  f: false,
   _: [],
   $0: '',
 };

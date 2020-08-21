@@ -39,6 +39,7 @@ export class Runner {
   private emitter: Emitter;
   private logger: Logger;
   private errorDetector: ErrorDetector;
+  private format: boolean | undefined;
 
   private manipulators: Manipulator[];
 
@@ -62,6 +63,7 @@ export class Runner {
     logger?: Logger
   ) {
     args = args || DEFAULT_ARGS;
+    this.format = args.f;
     this.parser = parser || new Parser();
     if (project) {
       this.project = project;
@@ -134,7 +136,7 @@ export class Runner {
     } while (errorsExist && !_.isEqual(errors, prevErrors));
 
     // Format and emit project.
-    this.emitter.format(modifiedSourceFilePaths, this.project);
+    if (this.format) this.emitter.format(modifiedSourceFilePaths, this.project);
     this.emitter.emit(this.project);
   }
 

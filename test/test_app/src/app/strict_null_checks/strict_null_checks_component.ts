@@ -87,26 +87,18 @@ export class StrictNullChecksComponent implements OnInit {
     n = null;
     u = undefined;
   }
-
-  // Test: Pass null value to function
-  // Fix: doesNotExpectNull(n: number | null) {}
-  doesNotExpectNull(n: number) {}
-
-  passesNullValue() {
-    this.doesNotExpectNull(null);
-  }
-
   // Test: Pass null and undefined value to function
-  // Fix: doesNotExpectNullUndefined(n: number | null | undefined) {}
   doesNotExpectNullUndefined(n: number) {}
 
   passesNullVariable() {
     const n: number | null = null;
+    // Fix: this.doesNotExpectNullUndefined(n!);
     this.doesNotExpectNullUndefined(n);
   }
 
   passesUndefinedVariable() {
     const n: number | undefined = undefined;
+    // Fix: this.doesNotExpectNullUndefined(n!);
     this.doesNotExpectNullUndefined(n);
   }
 
@@ -127,21 +119,20 @@ export class StrictNullChecksComponent implements OnInit {
     return 5;
   }
 
-  // Test: Add element to empty list
+  // UNSUPPORTED Test: Add element to empty list.
   addToEmptyList() {
-    // Fix: const emptyList: any[] = [];
     const emptyList = [];
     emptyList.push(5);
 
-    // Fix: const emptyListNonScalar: BasicClass[] = [];
     const emptyListNonScalar = [];
     emptyListNonScalar.push(new BasicClass());
   }
 
   // Test: Return null value but not in return type
-  // Fix: unexpectedlyReturnsNull(): number | null {
   unexpectedlyReturnsNull(): number {
-    return null;
+    const n: number | null = null;
+    // Fix: return n!;
+    return n;
   }
 
   // Test: Object is possibly null
