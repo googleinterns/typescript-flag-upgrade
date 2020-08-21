@@ -343,7 +343,7 @@ export class StrictNullChecksManipulator extends Manipulator {
    * @param {Node<ts.Node>} node - Identifier node for variable, parameter, or property.
    * @return {string[]} List of types assigned to input variable, parameter, or property.
    */
-  private determineAssignedType(node: Node<ts.Node>): string[] {
+  determineAssignedType(node: Node<ts.Node>): string[] {
     let assignedTypes: string[] = [];
 
     const binaryExpressionNode = node.getParentIfKind(

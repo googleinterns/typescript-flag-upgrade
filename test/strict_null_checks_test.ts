@@ -14,7 +14,8 @@
     limitations under the License.
 */
 
-import {Project} from 'ts-morph';
+import {Project, SyntaxKind} from 'ts-morph';
+import _ from 'lodash';
 import {Runner} from '@/src/runner';
 import {OutOfPlaceEmitter} from '@/src/emitters/out_of_place_emitter';
 import {SourceFileComparer} from '@/testing/source_file_matcher';
@@ -110,4 +111,49 @@ describe('StrictNullChecksManipulator', () => {
       project.removeSourceFile(expectedOutput);
     });
   }
+
+  it('determines assigned type in assigment statements', () => {
+    const sampleAssignmentSourceFile = project.createSourceFile(
+      'test_assignments.ts',
+      'let x; x = 0; let y; y = returnsString(); function returnsString(): string { return ""; }'
+    );
+
+    expect(
+      sampleAssignmentSourceFile
+        .getVariableDeclaration('x')
+        ?.getChildAtIndexIfKind(0, SyntaxKind.Identifier)
+    ).toBeDefined();
+    expect(
+      sampleAssignmentSourceFile
+        .getVariableDeclaration('y')
+        ?.getChildAtIndexIfKind(0, SyntaxKind.Identifier)
+    ).toBeDefined();
+
+    const sampleIdentifers = {
+      x: sampleAssignmentSourceFile
+        .getVariableDeclaration('x')!
+        .getChildAtIndexIfKind(0, SyntaxKind.Identifier)!,
+      y: sampleAssignmentSourceFile
+        .getVariableDeclaration('y')!
+        .getChildAtIndexIfKind(0, SyntaxKind.Identifier)!,
+    };
+
+    expect(
+      sampleIdentifers.x
+        .findReferencesAsNodes()
+        .some(node =>
+          _.isEqual(manipulator.determineAssignedType(node), ['number'])
+        )
+    ).toBeTrue();
+
+    expect(
+      sampleIdentifers.y
+        .findReferencesAsNodes()
+        .some(node =>
+          _.isEqual(manipulator.determineAssignedType(node), ['string'])
+        )
+    ).toBeTrue();
+
+    project.removeSourceFile(sampleAssignmentSourceFile);
+  });
 });

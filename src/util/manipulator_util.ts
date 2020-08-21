@@ -80,12 +80,16 @@ export class ManipulatorUtil {
       return [];
     }
 
-    return this.toTypeList(type).map(subType =>
-      subType.getText(
-        enclosingNode,
-        TypeFormatFlags.UseAliasDefinedOutsideCurrentScope
-      )
-    );
+    return [
+      ...new Set(
+        this.toTypeList(type).map(subType =>
+          subType.getText(
+            enclosingNode,
+            TypeFormatFlags.UseAliasDefinedOutsideCurrentScope
+          )
+        )
+      ),
+    ];
   }
 
   /**
